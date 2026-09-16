@@ -139,7 +139,34 @@ Reportes:
 - Backend: `backend/build/reports/jacoco/test/html/index.html`
 - Frontend: `frontend/coverage/frontend/index.html`
 
-## 7) CI/CD con GitHub Actions
+## 7) Análisis estático con SonarQube (local)
+
+Requisitos:
+
+- Servidor SonarQube corriendo en `http://localhost:9000` (variables `SONAR_HOST_URL` y `SONAR_TOKEN` en `.env`).
+- `sonar-scanner` en el PATH.
+
+Ejecutar:
+
+```bash
+cd backend
+./gradlew test jacocoTestReport
+sonar-scanner
+```
+
+En Windows PowerShell, el token se toma de `.env` (`SONAR_TOKEN`) de forma automática vía variable de entorno. Si no está exportado:
+
+```powershell
+$env:SONAR_TOKEN = (Get-Content ..\.env | Select-String '^SONAR_TOKEN=').Line -replace '^SONAR_TOKEN=',''
+$env:SONAR_HOST_URL = 'http://localhost:9000'
+cd backend
+.\gradlew.bat test jacocoTestReport
+sonar-scanner
+```
+
+La configuración real del análisis es `backend/sonar-project.properties` (proyecto `EasySchedule`, cobertura JaCoCo, bins y reportes de tests). La primera ejecución crea localmente el proyecto en el servidor y sube el reporte.
+
+## 8) CI/CD con GitHub Actions
 
 Se incluye el workflow `.github/workflows/ci-cd.yml` con estas reglas:
 

@@ -3,6 +3,7 @@ plugins {
 	id("org.springframework.boot") version "3.5.13"
 	id("io.spring.dependency-management") version "1.1.7"
 	jacoco
+	id("org.sonarqube") version "7.3.1.8318"
 }
 
 group = "com.easyschedule"
@@ -114,4 +115,21 @@ tasks.register<org.gradle.testing.jacoco.tasks.JacocoCoverageVerification>("jaco
 
 tasks.withType<JavaCompile> {
     options.compilerArgs.add("-parameters")
+}
+
+sonarqube {
+    properties {
+        property("sonar.projectKey", "EasySchedule")
+        property("sonar.projectName", "EasySchedule")
+        property("sonar.host.url", System.getenv("SONAR_HOST_URL") ?: "http://localhost:9000")
+        property("sonar.token", System.getenv("SONAR_TOKEN") ?: "")
+        property("sonar.sources", "src/main/java")
+        property("sonar.tests", "src/test/java")
+        property("sonar.junit.reportPaths", "build/test-results/test")
+        property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
+    }
+}
+
+tasks.named("sonar") {
+    dependsOn(tasks.test, tasks.jacocoTestReport)
 }
