@@ -14,6 +14,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HealthController {
 
+    private static final String STATUS = "status";
+    private static final String DATABASE = "database";
+    private static final String ERROR = "error";
+    private static final String UP = "UP";
+    private static final String DOWN = "DOWN";
+
     private final DataSource dataSource;
 
     public HealthController(DataSource dataSource) {
@@ -24,13 +30,13 @@ public class HealthController {
     public ResponseEntity<Map<String, String>> health() {
         try (Connection connection = dataSource.getConnection()) {
             if (connection.isValid(2)) {
-                return ResponseEntity.ok(Map.of("status", "UP", "database", "UP"));
+                return ResponseEntity.ok(Map.of(STATUS, UP, DATABASE, UP));
             }
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of("status", "DOWN", "database", "INVALID_CONNECTION"));
+                .body(Map.of(STATUS, DOWN, DATABASE, "INVALID_CONNECTION"));
         } catch (SQLException e) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of("status", "DOWN", "database", "DOWN", "error", e.getMessage()));
+                .body(Map.of(STATUS, DOWN, DATABASE, DOWN, ERROR, e.getMessage()));
         }
     }
 }
