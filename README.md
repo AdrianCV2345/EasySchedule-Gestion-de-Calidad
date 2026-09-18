@@ -143,28 +143,43 @@ Reportes:
 
 Requisitos:
 
-- Servidor SonarQube corriendo en `http://localhost:9000` (variables `SONAR_HOST_URL` y `SONAR_TOKEN` en `.env`).
-- `sonar-scanner` en el PATH.
+- Servidor SonarQube corriendo en `http://localhost:9000`.
+- Un token personal con permiso `Execute Analysis`.
+- Java 17 o superior y el wrapper de Gradle del backend.
 
-Ejecutar:
+El token nunca debe escribirse en `build.gradle.kts`, `sonar-project.properties` ni confirmarse en Git. Cada desarrollador debe definirlo solo en su sesión local. La clave por defecto es `SIS-312_Practica1`; si se usa la misma clave, todos los análisis actualizan el mismo proyecto de SonarQube.
+
+En Linux/macOS:
 
 ```bash
 cd backend
-./gradlew test jacocoTestReport
-sonar-scanner
+export SONAR_TOKEN='TU_TOKEN_PERSONAL'
+export SONAR_HOST_URL='http://localhost:9000'
+export SONAR_PROJECT_KEY='SIS-312_Practica1'
+export SONAR_PROJECT_NAME='SIS-312_Practica1'
+./gradlew sonar
 ```
 
-En Windows PowerShell, el token se toma de `.env` (`SONAR_TOKEN`) de forma automática vía variable de entorno. Si no está exportado:
+En Windows PowerShell:
 
 ```powershell
-$env:SONAR_TOKEN = (Get-Content ..\.env | Select-String '^SONAR_TOKEN=').Line -replace '^SONAR_TOKEN=',''
+$env:SONAR_TOKEN = 'TU_TOKEN_PERSONAL'
 $env:SONAR_HOST_URL = 'http://localhost:9000'
+$env:SONAR_PROJECT_KEY = 'SIS-312_Practica1'
+$env:SONAR_PROJECT_NAME = 'SIS-312_Practica1'
 cd backend
-.\gradlew.bat test jacocoTestReport
-sonar-scanner
+.\gradlew.bat sonar
 ```
 
-La configuración real del análisis es `backend/sonar-project.properties` (proyecto `EasySchedule`, cobertura JaCoCo, bins y reportes de tests). La primera ejecución crea localmente el proyecto en el servidor y sube el reporte.
+Para aislar completamente los reportes locales por desarrollador, usen una clave distinta (el proyecto debe existir o el token debe tener permiso para crearlo):
+
+```powershell
+$env:SONAR_PROJECT_KEY = "SIS-312_Practica1-$env:USERNAME"
+$env:SONAR_PROJECT_NAME = "SIS-312_Practica1-$env:USERNAME"
+.\gradlew.bat sonar
+```
+
+La configuración del análisis está en `backend/build.gradle.kts`; `backend/sonar-project.properties` conserva los valores estáticos compatibles con SonarScanner CLI. El task `sonar` ejecuta las pruebas y genera el reporte JaCoCo antes de publicar el análisis.
 
 ## 8) CI/CD con GitHub Actions
 

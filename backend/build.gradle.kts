@@ -119,8 +119,8 @@ tasks.withType<JavaCompile> {
 
 sonarqube {
     properties {
-        property("sonar.projectKey", "EasySchedule")
-        property("sonar.projectName", "EasySchedule")
+		property("sonar.projectKey", System.getenv("SONAR_PROJECT_KEY") ?: "SIS-312_Practica1")
+		property("sonar.projectName", System.getenv("SONAR_PROJECT_NAME") ?: "SIS-312_Practica1")
         property("sonar.host.url", System.getenv("SONAR_HOST_URL") ?: "http://localhost:9000")
         property("sonar.token", System.getenv("SONAR_TOKEN") ?: "")
         property("sonar.sources", "src/main/java")
