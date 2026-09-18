@@ -147,7 +147,7 @@ Requisitos:
 - Un token personal con permiso `Execute Analysis`.
 - Java 17 o superior y el wrapper de Gradle del backend.
 
-El token nunca debe escribirse en `build.gradle.kts`, `sonar-project.properties` ni confirmarse en Git. Cada desarrollador debe definirlo solo en su sesión local. La clave por defecto es `SIS-312_Practica1`; si se usa la misma clave, todos los análisis actualizan el mismo proyecto de SonarQube.
+El token nunca debe escribirse en `build.gradle.kts`, `sonar-project.properties` ni confirmarse en Git. Cada desarrollador debe definirlo solo en su sesión local. 
 
 En Linux/macOS:
 
@@ -155,8 +155,8 @@ En Linux/macOS:
 cd backend
 export SONAR_TOKEN='TU_TOKEN_PERSONAL'
 export SONAR_HOST_URL='http://localhost:9000'
-export SONAR_PROJECT_KEY='SIS-312_Practica1'
-export SONAR_PROJECT_NAME='SIS-312_Practica1'
+export SONAR_PROJECT_KEY='NOMBRE_DE_TU_PROYECTO'
+export SONAR_PROJECT_NAME='NOMBRE_DE_TU_PROYECTO'
 ./gradlew sonar
 ```
 
@@ -165,8 +165,8 @@ En Windows PowerShell:
 ```powershell
 $env:SONAR_TOKEN = 'TU_TOKEN_PERSONAL'
 $env:SONAR_HOST_URL = 'http://localhost:9000'
-$env:SONAR_PROJECT_KEY = 'SIS-312_Practica1'
-$env:SONAR_PROJECT_NAME = 'SIS-312_Practica1'
+$env:SONAR_PROJECT_KEY = 'NOMBRE_DE_TU_PROYECTO'
+$env:SONAR_PROJECT_NAME = 'NOMBRE_DE_TU_PROYECTO'
 cd backend
 .\gradlew.bat sonar
 ```
@@ -174,8 +174,8 @@ cd backend
 Para aislar completamente los reportes locales por desarrollador, usen una clave distinta (el proyecto debe existir o el token debe tener permiso para crearlo):
 
 ```powershell
-$env:SONAR_PROJECT_KEY = "SIS-312_Practica1-$env:USERNAME"
-$env:SONAR_PROJECT_NAME = "SIS-312_Practica1-$env:USERNAME"
+$env:SONAR_PROJECT_KEY = "NOMBRE_DE_TU_PROYECTO-$env:USERNAME"
+$env:SONAR_PROJECT_NAME = "NOMBRE_DE_TU_PROYECTO-$env:USERNAME"
 .\gradlew.bat sonar
 ```
 
