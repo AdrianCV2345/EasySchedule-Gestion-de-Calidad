@@ -20,13 +20,16 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    @SuppressWarnings ("java:S4502")
     @Bean
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http,
         BearerTokenAuthenticationFilter bearerTokenAuthenticationFilter
     ) throws Exception {
         http
-            .cors(cors -> {}) 
+            .cors(cors -> {})
+            // CSRF is not required because authentication is handled with JWT Bearer tokens.
+            // The application is stateless and does not rely on browser cookies.           
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
