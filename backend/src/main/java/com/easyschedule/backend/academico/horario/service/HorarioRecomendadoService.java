@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class HorarioRecomendadoService {
 
+    private static final String TIPO_HORARIO_ACADEMICO = "Horario academico";
     private static final Color PDF_TITLE_COLOR = new Color(0x12, 0x17, 0x22);
     private static final Color PDF_SUBTITLE_COLOR = new Color(0x1B, 0x23, 0x30);
     private static final Color PDF_PRIMARY_COLOR = new Color(0x3F, 0x63, 0x83);
@@ -189,7 +190,7 @@ public class HorarioRecomendadoService {
 
     private String toCsv(HorarioActualResponse horario) {
         StringBuilder builder = new StringBuilder();
-        appendCsvRow(builder, "Horario academico");
+        appendCsvRow(builder, TIPO_HORARIO_ACADEMICO);
         appendCsvRow(builder, "Universidad", metaValue(horario == null ? null : horario.universidad()));
         appendCsvRow(builder, "Carrera", metaValue(horario == null ? null : horario.carrera()));
         appendCsvRow(builder, "Malla", metaValue(horario == null ? null : horario.malla()));
@@ -307,7 +308,7 @@ public class HorarioRecomendadoService {
 
             graphics.setFont(titleFont);
             graphics.setColor(PDF_TITLE_COLOR);
-            drawText(graphics, "Horario academico", padding, y + 34);
+            drawText(graphics, TIPO_HORARIO_ACADEMICO, padding, y + 34);
             y += titleHeight;
 
             graphics.setFont(subtitleFont);
@@ -413,7 +414,7 @@ public class HorarioRecomendadoService {
             Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10f, Color.WHITE);
             Font cellFont = FontFactory.getFont(FontFactory.HELVETICA, 9f, PDF_TEXT_COLOR);
 
-            document.add(new Paragraph("Horario academico", titleFont));
+            document.add(new Paragraph(TIPO_HORARIO_ACADEMICO, titleFont));
             document.add(new Paragraph(buildSubtitle(horario), subtitleFont));
             document.add(new Paragraph(" "));
 
