@@ -21,6 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/academico/horario")
 public class HorarioRecomendadoController {
 
+	private static final String FORMATO_IMAGEN = "imagen";
+
 	private final HorarioRecomendadoService horarioRecomendadoService;
 
 	public HorarioRecomendadoController(HorarioRecomendadoService horarioRecomendadoService) {
@@ -44,7 +46,7 @@ public class HorarioRecomendadoController {
 		}
 
 		String normalizedFormat = formato == null ? "csv" : formato.trim().toLowerCase(Locale.ROOT);
-		if (!"csv".equals(normalizedFormat) && !"pdf".equals(normalizedFormat) && !"imagen".equals(normalizedFormat)) {
+		if (!"csv".equals(normalizedFormat) && !"pdf".equals(normalizedFormat) && !FORMATO_IMAGEN.equals(normalizedFormat)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Formato de exportacion no soportado");
 		}
 
@@ -55,7 +57,7 @@ public class HorarioRecomendadoController {
 		byte[] payload;
 		if ("pdf".equals(normalizedFormat)) {
 			payload = horarioRecomendadoService.buildHorarioActualPdf(userId);
-		} else if ("imagen".equals(normalizedFormat)) {
+		} else if (FORMATO_IMAGEN.equals(normalizedFormat)) {
 			payload = horarioRecomendadoService.buildHorarioActualImage(userId);
 		} else {
 			payload = horarioRecomendadoService.buildHorarioActualCsv(userId);
@@ -64,7 +66,7 @@ public class HorarioRecomendadoController {
 		String extension;
 		if ("pdf".equals(normalizedFormat)) {
 			extension = "pdf";
-		} else if ("imagen".equals(normalizedFormat)) {
+		} else if (FORMATO_IMAGEN.equals(normalizedFormat)) {
 			extension = "png";
 		} else {
 			extension = "csv";
@@ -75,7 +77,7 @@ public class HorarioRecomendadoController {
 		MediaType contentType;
 		if ("pdf".equals(normalizedFormat)) {
 			contentType = MediaType.APPLICATION_PDF;
-		} else if ("imagen".equals(normalizedFormat)) {
+		} else if (FORMATO_IMAGEN.equals(normalizedFormat)) {
 			contentType = MediaType.IMAGE_PNG;
 		} else {
 			contentType = MediaType.parseMediaType("text/csv");
