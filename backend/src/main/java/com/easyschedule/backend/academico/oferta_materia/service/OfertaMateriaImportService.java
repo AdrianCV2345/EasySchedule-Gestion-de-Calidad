@@ -37,9 +37,10 @@ import org.springframework.web.multipart.MultipartFile;
 public class OfertaMateriaImportService {
 
     private static final String CSV_EXTENSION = ".csv";
+    private static final String COLUMNA_CODIGO_MATERIA = "codigo_materia";
 
     private static final List<String> REQUIRED_COLUMNS = List.of(
-        "codigo_materia",
+        COLUMNA_CODIGO_MATERIA,
         "paralelo",
         "semestre_academico",
         "dia",
@@ -323,7 +324,7 @@ public class OfertaMateriaImportService {
     private OfertaImportRow mapRow(List<String> headers, List<String> values, int rowNumber) {
         return new OfertaImportRow(
             rowNumber,
-            getValue(headers, values, "codigo_materia"),
+            getValue(headers, values, COLUMNA_CODIGO_MATERIA),
             getValue(headers, values, "nombre_materia"),
             getValue(headers, values, "paralelo"),
             getValue(headers, values, "semestre_academico"),
@@ -354,7 +355,7 @@ public class OfertaMateriaImportService {
     ) {
         int errorsBeforeRow = errors.size();
 
-        validateRequiredValue(row.rowNumber(), "codigo_materia", row.codigoMateria(), errors);
+        validateRequiredValue(row.rowNumber(), COLUMNA_CODIGO_MATERIA, row.codigoMateria(), errors);
         validateRequiredValue(row.rowNumber(), "paralelo", row.paralelo(), errors);
         validateRequiredValue(row.rowNumber(), "semestre_academico", row.semestreAcademico(), errors);
         validateRequiredValue(row.rowNumber(), "dia", row.dia(), errors);
@@ -478,7 +479,7 @@ public class OfertaMateriaImportService {
         if (materia.isEmpty()) {
             errors.add(new OfertaImportErrorResponse(
                 row.rowNumber(),
-                "codigo_materia",
+                COLUMNA_CODIGO_MATERIA,
                 "El código de materia no existe.",
                 true
             ));
@@ -493,7 +494,7 @@ public class OfertaMateriaImportService {
         if (mallaMateria.isEmpty()) {
             errors.add(new OfertaImportErrorResponse(
                 row.rowNumber(),
-                "codigo_materia",
+                COLUMNA_CODIGO_MATERIA,
                 "La materia existe, pero no pertenece a la malla seleccionada.",
                 true
             ));

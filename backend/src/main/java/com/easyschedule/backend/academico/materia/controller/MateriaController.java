@@ -25,12 +25,12 @@ public class MateriaController {
     }
 
     @PostMapping
-    public ResponseEntity<?> crearPrerequisito(@RequestBody PrerequisitoRequest request) {
+    public ResponseEntity<Object> crearPrerequisito(@RequestBody PrerequisitoRequest request) {
         log.info("POST /api/academico/prerequisitos | body={}", request);
         try {
             PrerequisitoResponse response = materiaService.crearPrerequisito(request);
             log.info("Prerrequisito creado | id={}", response.id());
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok().body(response);
         } catch (IllegalArgumentException | EntityNotFoundException e) {
             log.warn("Error al crear prerrequisito: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -38,7 +38,7 @@ public class MateriaController {
     }
 
     @DeleteMapping
-    public ResponseEntity<?> eliminarPrerequisito(
+    public ResponseEntity<Object> eliminarPrerequisito(
             @RequestParam Long mallaMateriaId,
             @RequestParam Long prerequisitoMallaMateriaId) {
         log.info("DELETE /api/academico/prerequisitos | mallaMateriaId={} prerequisitoId={}", mallaMateriaId, prerequisitoMallaMateriaId);

@@ -42,7 +42,9 @@ public class OfertaMateria {
     @Column(name = "fecha_actualizacion", nullable = false)
     private OffsetDateTime fechaActualizacion;
 
+    // Required by JPA for entity materialization.
     public OfertaMateria() {
+        // JPA uses this constructor to instantiate the entity before setting its fields.
     }
 
     public Long getId() {
