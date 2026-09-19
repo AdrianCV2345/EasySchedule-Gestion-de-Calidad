@@ -37,6 +37,9 @@ import org.springframework.stereotype.Service;
 public class HorarioRecomendadoService {
 
     private static final String TIPO_HORARIO_ACADEMICO = "Horario academico";
+    private static final String LABEL_UNIVERSIDAD = "Universidad";
+
+
     private static final Color PDF_TITLE_COLOR = new Color(0x12, 0x17, 0x22);
     private static final Color PDF_SUBTITLE_COLOR = new Color(0x1B, 0x23, 0x30);
     private static final Color PDF_PRIMARY_COLOR = new Color(0x3F, 0x63, 0x83);
@@ -191,7 +194,7 @@ public class HorarioRecomendadoService {
     private String toCsv(HorarioActualResponse horario) {
         StringBuilder builder = new StringBuilder();
         appendCsvRow(builder, TIPO_HORARIO_ACADEMICO);
-        appendCsvRow(builder, "Universidad", metaValue(horario == null ? null : horario.universidad()));
+        appendCsvRow(builder, LABEL_UNIVERSIDAD, metaValue(horario == null ? null : horario.universidad()));
         appendCsvRow(builder, "Carrera", metaValue(horario == null ? null : horario.carrera()));
         appendCsvRow(builder, "Malla", metaValue(horario == null ? null : horario.malla()));
         appendCsvRow(builder, "Semestre oferta", metaValue(horario == null ? null : horario.semestreOferta()));
@@ -317,7 +320,7 @@ public class HorarioRecomendadoService {
             y += subtitleHeight + 12;
 
             String[][] metadata = new String[][] {
-                { "Universidad", metaValue(horario == null ? null : horario.universidad()) },
+                { LABEL_UNIVERSIDAD, metaValue(horario == null ? null : horario.universidad()) },
                 { "Carrera", metaValue(horario == null ? null : horario.carrera()) },
                 { "Malla", metaValue(horario == null ? null : horario.malla()) },
                 { "Semestre oferta", metaValue(horario == null ? null : horario.semestreOferta()) },
@@ -423,7 +426,7 @@ public class HorarioRecomendadoService {
             metadataTable.setWidths(new float[] { 1.7f, 4.3f });
             metadataTable.setSpacingAfter(12f);
 
-            addMetadataCell(metadataTable, "Universidad", metaValue(horario == null ? null : horario.universidad()), metadataLabelFont, metadataValueFont);
+            addMetadataCell(metadataTable, LABEL_UNIVERSIDAD, metaValue(horario == null ? null : horario.universidad()), metadataLabelFont, metadataValueFont);
             addMetadataCell(metadataTable, "Carrera", metaValue(horario == null ? null : horario.carrera()), metadataLabelFont, metadataValueFont);
             addMetadataCell(metadataTable, "Malla", metaValue(horario == null ? null : horario.malla()), metadataLabelFont, metadataValueFont);
             addMetadataCell(metadataTable, "Semestre oferta", metaValue(horario == null ? null : horario.semestreOferta()), metadataLabelFont, metadataValueFont);
