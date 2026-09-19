@@ -37,7 +37,18 @@ import org.springframework.stereotype.Service;
 public class HorarioRecomendadoService {
 
     private static final String TIPO_HORARIO_ACADEMICO = "Horario academico";
+
     private static final String LABEL_UNIVERSIDAD = "Universidad";
+    private static final String LABEL_CARRERA = "Carrera";
+    private static final String LABEL_MALLA = "Malla";
+    private static final String LABEL_SEMESTRE_OFERTA = "Semestre oferta";
+    private static final String LABEL_SEMESTRE_ACTUAL = "Semestre actual";
+
+    private static final String LABEL_MATERIA = "Materia";
+    private static final String LABEL_PARALELO = "Paralelo";
+    private static final String LABEL_DOCENTE = "Docente";
+    private static final String FONT_SANS_SERIF = "SansSerif";
+
 
 
     private static final Color PDF_TITLE_COLOR = new Color(0x12, 0x17, 0x22);
@@ -195,12 +206,12 @@ public class HorarioRecomendadoService {
         StringBuilder builder = new StringBuilder();
         appendCsvRow(builder, TIPO_HORARIO_ACADEMICO);
         appendCsvRow(builder, LABEL_UNIVERSIDAD, metaValue(horario == null ? null : horario.universidad()));
-        appendCsvRow(builder, "Carrera", metaValue(horario == null ? null : horario.carrera()));
-        appendCsvRow(builder, "Malla", metaValue(horario == null ? null : horario.malla()));
-        appendCsvRow(builder, "Semestre oferta", metaValue(horario == null ? null : horario.semestreOferta()));
-        appendCsvRow(builder, "Semestre actual", metaValue(horario == null ? null : horario.semestreActual()));
+        appendCsvRow(builder, LABEL_CARRERA, metaValue(horario == null ? null : horario.carrera()));
+        appendCsvRow(builder, LABEL_MALLA, metaValue(horario == null ? null : horario.malla()));
+        appendCsvRow(builder, LABEL_SEMESTRE_OFERTA, metaValue(horario == null ? null : horario.semestreOferta()));
+        appendCsvRow(builder, LABEL_SEMESTRE_ACTUAL, metaValue(horario == null ? null : horario.semestreActual()));
         appendCsvRow(builder);
-        appendCsvRow(builder, "Materia", "Paralelo", "Dia", "HoraInicio", "HoraFin", "Aula", "Docente");
+        appendCsvRow(builder, LABEL_MATERIA, LABEL_PARALELO, "Dia", "HoraInicio", "HoraFin", "Aula", LABEL_DOCENTE);
 
         if (horario == null || horario.clases() == null || horario.clases().isEmpty()) {
             return builder.toString();
@@ -266,7 +277,7 @@ public class HorarioRecomendadoService {
         final int metadataCount = 5;
 
         int[] columnWidths = new int[] { 320, 95, 125, 110, 110, 130, 180 };
-        String[] headers = new String[] { "Materia", "Paralelo", "Dia", "Inicio", "Fin", "Aula", "Docente" };
+        String[] headers = new String[] { LABEL_MATERIA, LABEL_PARALELO, "Dia", "Inicio", "Fin", "Aula", LABEL_DOCENTE };
         String[][] rows = new String[clases.size()][headers.length];
 
         for (int i = 0; i < clases.size(); i++) {
@@ -300,12 +311,12 @@ public class HorarioRecomendadoService {
             graphics.setColor(new Color(0xF5, 0xF7, 0xFB));
             graphics.fillRect(0, 0, width, height);
 
-            java.awt.Font titleFont = new java.awt.Font("SansSerif", java.awt.Font.BOLD, 28);
-            java.awt.Font subtitleFont = new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 15);
-            java.awt.Font metadataLabelFont = new java.awt.Font("SansSerif", java.awt.Font.BOLD, 13);
-            java.awt.Font metadataValueFont = new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 13);
-            java.awt.Font headerFont = new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14);
-            java.awt.Font bodyFont = new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 13);
+            java.awt.Font titleFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.BOLD, 28);
+            java.awt.Font subtitleFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.PLAIN, 15);
+            java.awt.Font metadataLabelFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.BOLD, 13);
+            java.awt.Font metadataValueFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.PLAIN, 13);
+            java.awt.Font headerFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.BOLD, 14);
+            java.awt.Font bodyFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.PLAIN, 13);
 
             int y = padding;
 
@@ -321,10 +332,10 @@ public class HorarioRecomendadoService {
 
             String[][] metadata = new String[][] {
                 { LABEL_UNIVERSIDAD, metaValue(horario == null ? null : horario.universidad()) },
-                { "Carrera", metaValue(horario == null ? null : horario.carrera()) },
-                { "Malla", metaValue(horario == null ? null : horario.malla()) },
-                { "Semestre oferta", metaValue(horario == null ? null : horario.semestreOferta()) },
-                { "Semestre actual", metaValue(horario == null ? null : horario.semestreActual()) }
+                { LABEL_CARRERA, metaValue(horario == null ? null : horario.carrera()) },
+                { LABEL_MALLA, metaValue(horario == null ? null : horario.malla()) },
+                { LABEL_SEMESTRE_OFERTA, metaValue(horario == null ? null : horario.semestreOferta()) },
+                { LABEL_SEMESTRE_ACTUAL, metaValue(horario == null ? null : horario.semestreActual()) }
             };
 
             int metadataLabelWidth = 210;
@@ -427,10 +438,10 @@ public class HorarioRecomendadoService {
             metadataTable.setSpacingAfter(12f);
 
             addMetadataCell(metadataTable, LABEL_UNIVERSIDAD, metaValue(horario == null ? null : horario.universidad()), metadataLabelFont, metadataValueFont);
-            addMetadataCell(metadataTable, "Carrera", metaValue(horario == null ? null : horario.carrera()), metadataLabelFont, metadataValueFont);
-            addMetadataCell(metadataTable, "Malla", metaValue(horario == null ? null : horario.malla()), metadataLabelFont, metadataValueFont);
-            addMetadataCell(metadataTable, "Semestre oferta", metaValue(horario == null ? null : horario.semestreOferta()), metadataLabelFont, metadataValueFont);
-            addMetadataCell(metadataTable, "Semestre actual", metaValue(horario == null ? null : horario.semestreActual()), metadataLabelFont, metadataValueFont);
+            addMetadataCell(metadataTable, LABEL_CARRERA, metaValue(horario == null ? null : horario.carrera()), metadataLabelFont, metadataValueFont);
+            addMetadataCell(metadataTable, LABEL_MALLA, metaValue(horario == null ? null : horario.malla()), metadataLabelFont, metadataValueFont);
+            addMetadataCell(metadataTable, LABEL_SEMESTRE_OFERTA, metaValue(horario == null ? null : horario.semestreOferta()), metadataLabelFont, metadataValueFont);
+            addMetadataCell(metadataTable, LABEL_SEMESTRE_ACTUAL, metaValue(horario == null ? null : horario.semestreActual()), metadataLabelFont, metadataValueFont);
 
             document.add(metadataTable);
 
@@ -438,13 +449,13 @@ public class HorarioRecomendadoService {
             table.setWidthPercentage(100f);
             table.setWidths(new float[] { 3.2f, 1.2f, 1.5f, 1.35f, 1.35f, 1.6f, 1.9f });
 
-            addHeaderCell(table, "Materia", headerFont);
-            addHeaderCell(table, "Paralelo", headerFont);
+            addHeaderCell(table, LABEL_MATERIA, headerFont);
+            addHeaderCell(table, LABEL_PARALELO, headerFont);
             addHeaderCell(table, "Dia", headerFont);
             addHeaderCell(table, "Inicio", headerFont);
             addHeaderCell(table, "Fin", headerFont);
             addHeaderCell(table, "Aula", headerFont);
-            addHeaderCell(table, "Docente", headerFont);
+            addHeaderCell(table, LABEL_DOCENTE, headerFont);
 
             if (horario != null && horario.clases() != null) {
                 for (HorarioClaseResponse clase : horario.clases()) {
