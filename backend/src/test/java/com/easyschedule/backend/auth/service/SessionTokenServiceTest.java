@@ -1,5 +1,6 @@
 package com.easyschedule.backend.auth.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,12 +43,12 @@ class SessionTokenServiceTest {
 
     @Test
     void revokeDoesNotThrowWhenTokenNotFound() {
-        sessionTokenService.revokeToken("unknown");
+        assertDoesNotThrow(() -> sessionTokenService.revokeToken("unknown"));
     }
 
     @Test
     void revokeDoesNotThrowWhenTokenIsBlank() {
-        sessionTokenService.revokeToken("");
-        sessionTokenService.revokeToken(null);
+        assertDoesNotThrow(() -> sessionTokenService.revokeToken(""));
+        assertDoesNotThrow(() -> sessionTokenService.revokeToken(null));
     }
 }
