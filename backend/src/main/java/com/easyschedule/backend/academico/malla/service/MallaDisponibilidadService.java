@@ -27,31 +27,50 @@ public class MallaDisponibilidadService {
         List<MallaMateriaResponse> todasLasMaterias = mallaService.findMateriasByMalla(mallaId, userId);
 
         // Mapas para el algoritmo de grafos
-        Map<Long, Integer> inDegree = new HashMap<>();
         Map<Long, List<Long>> adj = new HashMap<>();
-        Map<Long, MallaMateriaResponse> materiaMap = new HashMap<>();
+        Map<Long, Integer> inDegree = inicializarGrafo(todasLasMaterias, adj);
 
-        // Inicialización
-        for (MallaMateriaResponse materia : todasLasMaterias) {
-            materiaMap.put(materia.id(), materia);
-            inDegree.put(materia.id(), materia.prerequisitosIds() != null ? materia.prerequisitosIds().size() : 0);
+        // Propagación de materias aprobadas
+        Map<Long, Integer> effectiveInDegree = new HashMap<>(inDegree);
+        propagarMateriasAprobadas(effectiveInDegree, todasLasMaterias, adj);
+
+        // Filtrar las materias que están disponibles
+        return todasLasMaterias.stream()
+            .filter(m -> !estaCompletadaOCursando(m.estado())
+                && effectiveInDegree.getOrDefault(m.id(), 0) <= 0)
+            .toList();
+    }
+
+    private Map<Long, Integer> inicializarGrafo(
+        List<MallaMateriaResponse> materias,
+        Map<Long, List<Long>> adj
+    ) {
+        Map<Long, Integer> inDegree = new HashMap<>();
+
+        for (MallaMateriaResponse materia : materias) {
+            List<Long> prerequisitos = materia.prerequisitosIds();
+            inDegree.put(materia.id(), prerequisitos != null ? prerequisitos.size() : 0);
             adj.putIfAbsent(materia.id(), new ArrayList<>());
-            
+
             // Construir lista de adyacencia (de prerequisito -> dependiente)
-            if (materia.prerequisitosIds() != null) {
-                for (Long prereqId : materia.prerequisitosIds()) {
+            if (prerequisitos != null) {
+                for (Long prereqId : prerequisitos) {
                     adj.putIfAbsent(prereqId, new ArrayList<>());
                     adj.get(prereqId).add(materia.id());
                 }
             }
         }
+        return inDegree;
+    }
 
-        // Propagación de materias aprobadas
-        Map<Long, Integer> effectiveInDegree = new HashMap<>(inDegree);
-        for (MallaMateriaResponse materia : todasLasMaterias) {
-            String estado = materia.estado();
+    private void propagarMateriasAprobadas(
+        Map<Long, Integer> effectiveInDegree,
+        List<MallaMateriaResponse> materias,
+        Map<Long, List<Long>> adj
+    ) {
+        for (MallaMateriaResponse materia : materias) {
             // Basado en el MCP, el estado para materias completadas es "aprobada"
-            if ("aprobada".equalsIgnoreCase(estado)) {
+            if ("aprobada".equalsIgnoreCase(materia.estado())) {
                 List<Long> dependientes = adj.get(materia.id());
                 if (dependientes != null) {
                     for (Long depId : dependientes) {
@@ -60,17 +79,12 @@ public class MallaDisponibilidadService {
                 }
             }
         }
+    }
 
-        // Filtrar las materias que están disponibles
-        return todasLasMaterias.stream()
-            .filter(m -> {
-                String estado = m.estado();
-                // Está disponible si NO está "aprobada" ni "cursando"
-                // (puede ser "pendiente" o null cuando no hay registro en DB)
-                boolean isCompletadaOCursando = "aprobada".equalsIgnoreCase(estado) || "cursando".equalsIgnoreCase(estado);
-                return !isCompletadaOCursando && effectiveInDegree.getOrDefault(m.id(), 0) <= 0;
-            })
-            .collect(Collectors.toList());
+    private boolean estaCompletadaOCursando(String estado) {
+        // Está disponible si NO está "aprobada" ni "cursando"
+        // (puede ser "pendiente" o null cuando no hay registro en DB)
+        return "aprobada".equalsIgnoreCase(estado) || "cursando".equalsIgnoreCase(estado);
     }
 
     public List<MateriaDisponibleConOfertasResponse> getMateriasDisponiblesConOfertas(Long mallaId, Long userId) {

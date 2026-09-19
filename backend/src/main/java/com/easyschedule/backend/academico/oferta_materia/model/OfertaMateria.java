@@ -44,7 +44,7 @@ public class OfertaMateria {
 
     // Required by JPA for entity materialization.
     public OfertaMateria() {
-        // JPA uses this constructor to instantiate the entity before setting its fields.
+        // Constructor requerido por JPA/Hibernate para instanciar la entidad sin argumentos.
     }
 
     public Long getId() {
