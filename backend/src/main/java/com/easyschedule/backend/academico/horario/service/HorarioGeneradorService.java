@@ -196,6 +196,9 @@ public class HorarioGeneradorService {
                 case "TENER_DIAS_LIBRES":
                     penalizacionBruta = evaluarTenerDiasLibres(combinacion);
                     break;
+                default:
+                    penalizacionBruta = 0;
+                    break;
             }
 
             puntajeTotal += (penalizacionBruta * multiplicadores[i]);
