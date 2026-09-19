@@ -43,6 +43,7 @@ public class OfertaMateria {
     private OffsetDateTime fechaActualizacion;
 
     public OfertaMateria() {
+        // Constructor requerido por JPA/Hibernate para instanciar la entidad sin argumentos.
     }
 
     public Long getId() {
