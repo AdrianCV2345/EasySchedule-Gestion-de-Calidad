@@ -107,7 +107,8 @@ public class OfertaMateriaImportService {
         );
     }
 
-    @Transactional(readOnly = true)
+    
+    
     public OfertaImportResultResponse validateCsv(Long mallaId, MultipartFile file) {
         List<OfertaImportErrorResponse> errors = new ArrayList<>();
         List<OfertaImportWarningResponse> warnings = new ArrayList<>();
