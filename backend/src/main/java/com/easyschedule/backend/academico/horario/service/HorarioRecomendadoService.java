@@ -263,6 +263,7 @@ public class HorarioRecomendadoService {
         return escaped;
     }
 
+    @SuppressWarnings ("java:S2093")
     private byte[] toImage(HorarioActualResponse horario) {
         List<HorarioClaseResponse> clases = horario == null || horario.clases() == null
             ? List.of()
