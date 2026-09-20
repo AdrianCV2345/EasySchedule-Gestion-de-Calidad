@@ -416,67 +416,136 @@ public class HorarioRecomendadoService {
     }
 
     private byte[] toPdf(HorarioActualResponse horario) {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        Document document = new Document();
-        try {
-            PdfWriter.getInstance(document, outputStream);
-            document.open();
 
-            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16f, PDF_TITLE_COLOR);
-            Font subtitleFont = FontFactory.getFont(FontFactory.HELVETICA, 10f, PDF_SUBTITLE_COLOR);
-            Font metadataLabelFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9f, Color.WHITE);
-            Font metadataValueFont = FontFactory.getFont(FontFactory.HELVETICA, 9f, PDF_TEXT_COLOR);
-            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10f, Color.WHITE);
-            Font cellFont = FontFactory.getFont(FontFactory.HELVETICA, 9f, PDF_TEXT_COLOR);
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 
-            document.add(new Paragraph(TIPO_HORARIO_ACADEMICO, titleFont));
-            document.add(new Paragraph(buildSubtitle(horario), subtitleFont));
-            document.add(new Paragraph(" "));
+            try (Document document = new Document()) {
 
-            PdfPTable metadataTable = new PdfPTable(2);
-            metadataTable.setWidthPercentage(100f);
-            metadataTable.setWidths(new float[] { 1.7f, 4.3f });
-            metadataTable.setSpacingAfter(12f);
+                PdfWriter.getInstance(document, outputStream);
+                document.open();
 
-            addMetadataCell(metadataTable, LABEL_UNIVERSIDAD, metaValue(horario == null ? null : horario.universidad()), metadataLabelFont, metadataValueFont);
-            addMetadataCell(metadataTable, LABEL_CARRERA, metaValue(horario == null ? null : horario.carrera()), metadataLabelFont, metadataValueFont);
-            addMetadataCell(metadataTable, LABEL_MALLA, metaValue(horario == null ? null : horario.malla()), metadataLabelFont, metadataValueFont);
-            addMetadataCell(metadataTable, LABEL_SEMESTRE_OFERTA, metaValue(horario == null ? null : horario.semestreOferta()), metadataLabelFont, metadataValueFont);
-            addMetadataCell(metadataTable, LABEL_SEMESTRE_ACTUAL, metaValue(horario == null ? null : horario.semestreActual()), metadataLabelFont, metadataValueFont);
+                Font titleFont = FontFactory.getFont(
+                    FontFactory.HELVETICA_BOLD,
+                    16f,
+                    PDF_TITLE_COLOR
+                );
 
-            document.add(metadataTable);
+                Font subtitleFont = FontFactory.getFont(
+                    FontFactory.HELVETICA,
+                    10f,
+                    PDF_SUBTITLE_COLOR
+                );
 
-            PdfPTable table = new PdfPTable(7);
-            table.setWidthPercentage(100f);
-            table.setWidths(new float[] { 3.2f, 1.2f, 1.5f, 1.35f, 1.35f, 1.6f, 1.9f });
+                Font metadataLabelFont = FontFactory.getFont(
+                    FontFactory.HELVETICA_BOLD,
+                    9f,
+                    Color.WHITE
+                );
 
-            addHeaderCell(table, LABEL_MATERIA, headerFont);
-            addHeaderCell(table, LABEL_PARALELO, headerFont);
-            addHeaderCell(table, "Dia", headerFont);
-            addHeaderCell(table, "Inicio", headerFont);
-            addHeaderCell(table, "Fin", headerFont);
-            addHeaderCell(table, "Aula", headerFont);
-            addHeaderCell(table, LABEL_DOCENTE, headerFont);
+                Font metadataValueFont = FontFactory.getFont(
+                    FontFactory.HELVETICA,
+                    9f,
+                    PDF_TEXT_COLOR
+                );
 
-            if (horario != null && horario.clases() != null) {
-                for (HorarioClaseResponse clase : horario.clases()) {
-                    addBodyCell(table, safeText(clase.materia()), cellFont);
-                    addBodyCell(table, safeText(clase.paralelo()), cellFont);
-                    addBodyCell(table, safeText(clase.dia()), cellFont);
-                    addBodyCell(table, safeText(clase.horaInicio()), cellFont);
-                    addBodyCell(table, safeText(clase.horaFin()), cellFont);
-                    addBodyCell(table, safeText(clase.aula()), cellFont);
-                    addBodyCell(table, safeText(clase.docente()), cellFont);
+                Font headerFont = FontFactory.getFont(
+                    FontFactory.HELVETICA_BOLD,
+                    10f,
+                    Color.WHITE
+                );
+
+                Font cellFont = FontFactory.getFont(
+                    FontFactory.HELVETICA,
+                    9f,
+                    PDF_TEXT_COLOR
+                );
+
+                document.add(new Paragraph(TIPO_HORARIO_ACADEMICO, titleFont));
+                document.add(new Paragraph(buildSubtitle(horario), subtitleFont));
+                document.add(new Paragraph(" "));
+
+                PdfPTable metadataTable = new PdfPTable(2);
+                metadataTable.setWidthPercentage(100f);
+                metadataTable.setWidths(new float[] { 1.7f, 4.3f });
+                metadataTable.setSpacingAfter(12f);
+
+                addMetadataCell(
+                    metadataTable,
+                    LABEL_UNIVERSIDAD,
+                    metaValue(horario == null ? null : horario.universidad()),
+                    metadataLabelFont,
+                    metadataValueFont
+                );
+
+                addMetadataCell(
+                    metadataTable,
+                    LABEL_CARRERA,
+                    metaValue(horario == null ? null : horario.carrera()),
+                    metadataLabelFont,
+                    metadataValueFont
+                );
+
+                addMetadataCell(
+                    metadataTable,
+                    LABEL_MALLA,
+                    metaValue(horario == null ? null : horario.malla()),
+                    metadataLabelFont,
+                    metadataValueFont
+                );
+
+                addMetadataCell(
+                    metadataTable,
+                    LABEL_SEMESTRE_OFERTA,
+                    metaValue(horario == null ? null : horario.semestreOferta()),
+                    metadataLabelFont,
+                    metadataValueFont
+                );
+
+                addMetadataCell(
+                    metadataTable,
+                    LABEL_SEMESTRE_ACTUAL,
+                    metaValue(horario == null ? null : horario.semestreActual()),
+                    metadataLabelFont,
+                    metadataValueFont
+                );
+
+                document.add(metadataTable);
+
+                PdfPTable table = new PdfPTable(7);
+                table.setWidthPercentage(100f);
+                table.setWidths(
+                    new float[] { 3.2f, 1.2f, 1.5f, 1.35f, 1.35f, 1.6f, 1.9f }
+                );
+
+                addHeaderCell(table, LABEL_MATERIA, headerFont);
+                addHeaderCell(table, LABEL_PARALELO, headerFont);
+                addHeaderCell(table, "Dia", headerFont);
+                addHeaderCell(table, "Inicio", headerFont);
+                addHeaderCell(table, "Fin", headerFont);
+                addHeaderCell(table, "Aula", headerFont);
+                addHeaderCell(table, LABEL_DOCENTE, headerFont);
+
+                if (horario != null && horario.clases() != null) {
+                    for (HorarioClaseResponse clase : horario.clases()) {
+                        addBodyCell(table, safeText(clase.materia()), cellFont);
+                        addBodyCell(table, safeText(clase.paralelo()), cellFont);
+                        addBodyCell(table, safeText(clase.dia()), cellFont);
+                        addBodyCell(table, safeText(clase.horaInicio()), cellFont);
+                        addBodyCell(table, safeText(clase.horaFin()), cellFont);
+                        addBodyCell(table, safeText(clase.aula()), cellFont);
+                        addBodyCell(table, safeText(clase.docente()), cellFont);
+                    }
                 }
+
+                document.add(table);
             }
 
-            document.add(table);
+            // Document ya fue cerrado aquí.
+            return outputStream.toByteArray();
+
         } catch (Exception ex) {
             return new byte[0];
-        } finally {
-            document.close();
         }
-        return outputStream.toByteArray();
     }
 
     private void addHeaderCell(PdfPTable table, String text, Font font) {
