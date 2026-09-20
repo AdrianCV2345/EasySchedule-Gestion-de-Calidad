@@ -38,14 +38,18 @@ public class OfertaMateriaImportService {
 
     private static final String CSV_EXTENSION = ".csv";
     private static final String COLUMNA_CODIGO_MATERIA = "codigo_materia";
+    private static final String COLUMNA_PARALELO = "paralelo";
+    private static final String COLUMNA_SEMESTRE_ACADEMICO = "semestre_academico";
+    private static final String COLUMNA_HORA_INICIO = "hora_inicio";
+    private static final String COLUMNA_HORA_FIN = "hora_fin";
 
     private static final List<String> REQUIRED_COLUMNS = List.of(
         COLUMNA_CODIGO_MATERIA,
-        "paralelo",
-        "semestre_academico",
+        COLUMNA_PARALELO,
+        COLUMNA_SEMESTRE_ACADEMICO,
         "dia",
-        "hora_inicio",
-        "hora_fin"
+        COLUMNA_HORA_INICIO,
+        COLUMNA_HORA_FIN
     );
 
     private static final Set<String> ALLOWED_DAYS = Set.of(
@@ -326,11 +330,11 @@ public class OfertaMateriaImportService {
             rowNumber,
             getValue(headers, values, COLUMNA_CODIGO_MATERIA),
             getValue(headers, values, "nombre_materia"),
-            getValue(headers, values, "paralelo"),
-            getValue(headers, values, "semestre_academico"),
+            getValue(headers, values, COLUMNA_PARALELO),
+            getValue(headers, values, COLUMNA_SEMESTRE_ACADEMICO),
             getValue(headers, values, "dia"),
-            getValue(headers, values, "hora_inicio"),
-            getValue(headers, values, "hora_fin"),
+            getValue(headers, values, COLUMNA_HORA_INICIO),
+            getValue(headers, values, COLUMNA_HORA_FIN),
             getValue(headers, values, "docente"),
             getValue(headers, values, "aula")
         );
@@ -356,11 +360,11 @@ public class OfertaMateriaImportService {
         int errorsBeforeRow = errors.size();
 
         validateRequiredValue(row.rowNumber(), COLUMNA_CODIGO_MATERIA, row.codigoMateria(), errors);
-        validateRequiredValue(row.rowNumber(), "paralelo", row.paralelo(), errors);
-        validateRequiredValue(row.rowNumber(), "semestre_academico", row.semestreAcademico(), errors);
+        validateRequiredValue(row.rowNumber(), COLUMNA_PARALELO, row.paralelo(), errors);
+        validateRequiredValue(row.rowNumber(), COLUMNA_SEMESTRE_ACADEMICO, row.semestreAcademico(), errors);
         validateRequiredValue(row.rowNumber(), "dia", row.dia(), errors);
-        validateRequiredValue(row.rowNumber(), "hora_inicio", row.horaInicio(), errors);
-        validateRequiredValue(row.rowNumber(), "hora_fin", row.horaFin(), errors);
+        validateRequiredValue(row.rowNumber(), COLUMNA_HORA_INICIO, row.horaInicio(), errors);
+        validateRequiredValue(row.rowNumber(), COLUMNA_HORA_FIN, row.horaFin(), errors);
 
         validateDay(row, errors);
         validateHourRange(row, errors);
@@ -434,7 +438,7 @@ public class OfertaMateriaImportService {
         } catch (DateTimeParseException exception) {
             errors.add(new OfertaImportErrorResponse(
                 row.rowNumber(),
-                "hora_inicio",
+                COLUMNA_HORA_INICIO,
                 "La hora de inicio debe tener formato HH:mm.",
                 true
             ));
@@ -446,7 +450,7 @@ public class OfertaMateriaImportService {
         } catch (DateTimeParseException exception) {
             errors.add(new OfertaImportErrorResponse(
                 row.rowNumber(),
-                "hora_fin",
+                COLUMNA_HORA_FIN,
                 "La hora de fin debe tener formato HH:mm.",
                 true
             ));
