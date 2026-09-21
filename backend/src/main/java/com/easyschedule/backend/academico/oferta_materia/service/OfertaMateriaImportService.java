@@ -43,6 +43,9 @@ public class OfertaMateriaImportService {
     private static final String COLUMNA_HORA_INICIO = "hora_inicio";
     private static final String COLUMNA_HORA_FIN = "hora_fin";
 
+    private static final String CAMPO_ARCHIVO = "archivo";
+    private static final String COLUMNA_DOCENTE = "docente";
+
     private static final List<String> REQUIRED_COLUMNS = List.of(
         COLUMNA_CODIGO_MATERIA,
         COLUMNA_PARALELO,
@@ -108,7 +111,7 @@ public class OfertaMateriaImportService {
     }
 
     
-    
+
     public OfertaImportResultResponse validateCsv(Long mallaId, MultipartFile file) {
         List<OfertaImportErrorResponse> errors = new ArrayList<>();
         List<OfertaImportWarningResponse> warnings = new ArrayList<>();
@@ -128,7 +131,7 @@ public class OfertaMateriaImportService {
         if (file == null || file.isEmpty()) {
             errors.add(new OfertaImportErrorResponse(
                 0,
-                "archivo",
+                CAMPO_ARCHIVO,
                 "El archivo no puede estar vacío.",
                 true
             ));
@@ -139,7 +142,7 @@ public class OfertaMateriaImportService {
         if (!hasCsvExtension(file)) {
             errors.add(new OfertaImportErrorResponse(
                 0,
-                "archivo",
+                CAMPO_ARCHIVO,
                 "Solo se permiten archivos CSV.",
                 true
             ));
@@ -154,7 +157,7 @@ public class OfertaMateriaImportService {
         } catch (IOException exception) {
             errors.add(new OfertaImportErrorResponse(
                 0,
-                "archivo",
+                CAMPO_ARCHIVO,
                 "No se pudo leer el archivo CSV.",
                 true
             ));
@@ -165,7 +168,7 @@ public class OfertaMateriaImportService {
         if (lines.isEmpty()) {
             errors.add(new OfertaImportErrorResponse(
                 0,
-                "archivo",
+                CAMPO_ARCHIVO,
                 "El archivo debe contener encabezados y al menos una fila de datos.",
                 true
             ));
@@ -189,7 +192,7 @@ public class OfertaMateriaImportService {
         if (dataLines.isEmpty()) {
             errors.add(new OfertaImportErrorResponse(
                 0,
-                "archivo",
+                CAMPO_ARCHIVO,
                 "El archivo debe contener al menos una fila de datos.",
                 true
             ));
@@ -336,7 +339,7 @@ public class OfertaMateriaImportService {
             getValue(headers, values, "dia"),
             getValue(headers, values, COLUMNA_HORA_INICIO),
             getValue(headers, values, COLUMNA_HORA_FIN),
-            getValue(headers, values, "docente"),
+            getValue(headers, values, COLUMNA_DOCENTE),
             getValue(headers, values, "aula")
         );
     }
@@ -516,7 +519,7 @@ public class OfertaMateriaImportService {
         if (row.docente().isBlank()) {
             warnings.add(new OfertaImportWarningResponse(
                 row.rowNumber(),
-                "docente",
+                COLUMNA_DOCENTE,
                 "El docente está vacío. Se procesará como valor opcional."
             ));
         }
@@ -584,7 +587,7 @@ public class OfertaMateriaImportService {
         if (!row.docente().isBlank() && !builder.hasSameDocente(row.docente())) {
             warnings.add(new OfertaImportWarningResponse(
                 row.rowNumber(),
-                "docente",
+                COLUMNA_DOCENTE,
                 "El docente difiere de otra fila agrupada en la misma oferta. Se conservará el primer valor detectado."
             ));
         }
