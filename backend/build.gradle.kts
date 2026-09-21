@@ -4,6 +4,7 @@ plugins {
 	id("io.spring.dependency-management") version "1.1.7"
 	jacoco
 	id("org.sonarqube") version "7.3.1.8318"
+	pmd
 }
 
 group = "com.easyschedule"
@@ -33,6 +34,11 @@ dependencies {
 	implementation("com.github.librepdf:openpdf:1.3.30")
 	implementation("com.google.api-client:google-api-client:2.7.2")
 	implementation("com.google.http-client:google-http-client-gson:1.45.0")
+}
+
+pmd {
+	toolVersion = "7.13.0"
+	rulesMinimumPriority = 5
 }
 
 tasks.withType<Test> {
