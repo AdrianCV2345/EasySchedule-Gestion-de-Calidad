@@ -35,6 +35,7 @@ public class SeleccionTemporal {
     private OffsetDateTime fechaSeleccion;
 
     public SeleccionTemporal() {
+        // Constructor sin parámetros requerido por JPA para instanciar la entidad.
     }
 
     public Long getId() {
