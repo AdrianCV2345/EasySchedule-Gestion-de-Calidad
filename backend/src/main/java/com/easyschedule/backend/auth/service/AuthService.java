@@ -28,6 +28,8 @@ public class AuthService {
 
     private static final String CREDENCIALES_INCORRECTAS_MESSAGE = "Credenciales incorrectas";
 
+    private static final String MESSAGE_KEY = "message";
+
     private final UserRepository userRepository;
     private final PasswordEncoder encoder;
     private final SessionTokenService sessionTokenService;
@@ -109,7 +111,7 @@ public class AuthService {
                 "token", token,
                 "username", user.getUsername(),
                 "expiresInSeconds", sessionTokenService.getTokenTtlSeconds(),
-                "message", "Login exitoso"
+                MESSAGE_KEY, "Login exitoso"
             )
         );
     }
@@ -146,7 +148,7 @@ public class AuthService {
                         "token", token,
                         "username", user.getUsername(),
                         "expiresInSeconds", sessionTokenService.getTokenTtlSeconds(),
-                        "message", "Login con Google exitoso"
+                        MESSAGE_KEY, "Login con Google exitoso"
                 )
         );
     }
@@ -155,7 +157,7 @@ public class AuthService {
         String token = extractBearerToken(authorizationHeader);
         log.debug("[AUTH_LOGOUT] token extraido para revocacion | tokenPresent={}", !token.isBlank());
         sessionTokenService.revokeToken(token);
-        return ResponseEntity.ok().body(Map.of("message", "Sesion cerrada correctamente"));
+        return ResponseEntity.ok().body(Map.of(MESSAGE_KEY, "Sesion cerrada correctamente"));
     }
 
     public ResponseEntity<Object> changePassword(Long userId, ChangePasswordRequest request) {
@@ -188,7 +190,7 @@ public class AuthService {
     
         log.info("[AUTH_CHANGE_PASSWORD] exito | userId={}", userId);
     
-        return ResponseEntity.ok().body(Map.of("message", "Contrasenia actualizada correctamente"));
+        return ResponseEntity.ok().body(Map.of(MESSAGE_KEY, "Contrasenia actualizada correctamente"));
     }
 
     private User updateGoogleAssociation(User user, GoogleUserInfo googleUserInfo) {
