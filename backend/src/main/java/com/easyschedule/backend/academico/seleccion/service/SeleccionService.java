@@ -21,6 +21,8 @@ import java.util.Objects;
 @Service
 public class SeleccionService {
 
+    private static final String CARRERA_NO_ENCONTRADA_MESSAGE = "Carrera no encontrada";
+
     private final EstudianteRepository estudianteRepository;
     private final UniversidadRepository universidadRepository;
     private final CarreraRepository carreraRepository;
@@ -47,7 +49,7 @@ public class SeleccionService {
         Universidad universidad = universidadRepository.findByIdAndActiveTrue(estudiante.getUniversidadId())
             .orElseThrow(() -> new ResourceNotFoundException("Universidad no encontrada"));
         Carrera carrera = carreraRepository.findByIdAndActiveTrue(estudiante.getCarreraId())
-            .orElseThrow(() -> new ResourceNotFoundException("Carrera no encontrada"));
+            .orElseThrow(() -> new ResourceNotFoundException(CARRERA_NO_ENCONTRADA_MESSAGE));
         Malla malla = mallaRepository.findByIdAndActiveTrue(estudiante.getMalla().getId())
             .orElseThrow(() -> new ResourceNotFoundException("Malla no encontrada"));
 
@@ -68,9 +70,9 @@ public class SeleccionService {
         Malla malla = mallaRepository.findByIdAndActiveTrue(request.mallaId())
             .orElseThrow(() -> new ResourceNotFoundException("Malla no encontrada"));
         Carrera carreraDeMalla = carreraRepository.findByIdAndActiveTrue(malla.getCarreraId())
-            .orElseThrow(() -> new ResourceNotFoundException("Carrera no encontrada"));
+            .orElseThrow(() -> new ResourceNotFoundException(CARRERA_NO_ENCONTRADA_MESSAGE));
         Carrera carreraSolicitada = request.carreraId() == null ? null : carreraRepository.findByIdAndActiveTrue(request.carreraId())
-            .orElseThrow(() -> new ResourceNotFoundException("Carrera no encontrada"));
+            .orElseThrow(() -> new ResourceNotFoundException(CARRERA_NO_ENCONTRADA_MESSAGE));
 
         if (!carreraDeMalla.getUniversidadId().equals(universidad.getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La malla no pertenece a la universidad seleccionada");
