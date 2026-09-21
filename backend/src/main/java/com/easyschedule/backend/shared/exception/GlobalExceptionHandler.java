@@ -22,15 +22,22 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    private static final String FIELD_TIMESTAMP = "timestamp";
+    private static final String FIELD_STATUS = "status";
+    private static final String FIELD_ERROR = "error";
+    private static final String FIELD_MESSAGE = "message";
+
+
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Object> handleResourceNotFound(ResourceNotFoundException ex, WebRequest request) {
         log.warn("[GLOBAL_EXCEPTION] recurso no encontrado | path={} message={}", pathOf(request), ex.getMessage());
 
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", OffsetDateTime.now());
-        body.put("status", HttpStatus.NOT_FOUND.value());
-        body.put("error", "Not Found");
-        body.put("message", ex.getMessage());
+        body.put(FIELD_TIMESTAMP, OffsetDateTime.now());
+        body.put(FIELD_STATUS, HttpStatus.NOT_FOUND.value());
+        body.put(FIELD_ERROR, "Not Found");
+        body.put(FIELD_MESSAGE, ex.getMessage());
 
         return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
     }
@@ -40,15 +47,15 @@ public class GlobalExceptionHandler {
         log.warn("[GLOBAL_EXCEPTION] validacion fallida | path={} errors={}", pathOf(request), ex.getBindingResult().getErrorCount());
 
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", OffsetDateTime.now());
-        body.put("status", HttpStatus.BAD_REQUEST.value());
-        body.put("error", "Bad Request");
+        body.put(FIELD_TIMESTAMP, OffsetDateTime.now());
+        body.put(FIELD_STATUS, HttpStatus.BAD_REQUEST.value());
+        body.put(FIELD_ERROR, "Bad Request");
 
         String message = ex.getBindingResult().getFieldErrors().stream()
             .findFirst()
             .map(error -> error.getDefaultMessage())
             .orElse("Datos inválidos");
-        body.put("message", message);
+        body.put(FIELD_MESSAGE, message);
 
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
@@ -63,10 +70,10 @@ public class GlobalExceptionHandler {
         );
 
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", OffsetDateTime.now());
-        body.put("status", ex.getStatusCode().value());
-        body.put("error", ex.getStatusCode().toString());
-        body.put("message", ex.getReason() != null ? ex.getReason() : "Error en la solicitud");
+        body.put(FIELD_TIMESTAMP, OffsetDateTime.now());
+        body.put(FIELD_STATUS, ex.getStatusCode().value());
+        body.put(FIELD_ERROR, ex.getStatusCode().toString());
+        body.put(FIELD_MESSAGE, ex.getReason() != null ? ex.getReason() : "Error en la solicitud");
 
         return new ResponseEntity<>(body, ex.getStatusCode());
     }
@@ -76,10 +83,10 @@ public class GlobalExceptionHandler {
         log.warn("[GLOBAL_EXCEPTION] usuario ya existe | path={} message={}", pathOf(request), ex.getMessage());
 
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", OffsetDateTime.now());
-        body.put("status", HttpStatus.CONFLICT.value());
-        body.put("error", "Conflict");
-        body.put("message", ex.getMessage());
+        body.put(FIELD_TIMESTAMP, OffsetDateTime.now());
+        body.put(FIELD_STATUS, HttpStatus.CONFLICT.value());
+        body.put(FIELD_ERROR, "Conflict");
+        body.put(FIELD_MESSAGE, ex.getMessage());
 
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
@@ -89,10 +96,10 @@ public class GlobalExceptionHandler {
         log.warn("[GLOBAL_EXCEPTION] argumento invalido | path={} message={}", pathOf(request), ex.getMessage());
 
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", OffsetDateTime.now());
-        body.put("status", HttpStatus.BAD_REQUEST.value());
-        body.put("error", "Bad Request");
-        body.put("message", ex.getMessage());
+        body.put(FIELD_TIMESTAMP, OffsetDateTime.now());
+        body.put(FIELD_STATUS, HttpStatus.BAD_REQUEST.value());
+        body.put(FIELD_ERROR, "Bad Request");
+        body.put(FIELD_MESSAGE, ex.getMessage());
 
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
@@ -102,9 +109,9 @@ public class GlobalExceptionHandler {
         log.warn("[GLOBAL_EXCEPTION] data integrity violation | path={} message={}", pathOf(request), ex.getMessage());
 
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", OffsetDateTime.now());
-        body.put("status", HttpStatus.CONFLICT.value());
-        body.put("error", "Conflict");
+        body.put(FIELD_TIMESTAMP, OffsetDateTime.now());
+        body.put(FIELD_STATUS, HttpStatus.CONFLICT.value());
+        body.put(FIELD_ERROR, "Conflict");
 
         String message = cleanDatabaseMessage(ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : null);
         if (message == null || message.isBlank()) {
@@ -126,7 +133,7 @@ public class GlobalExceptionHandler {
             }
         }
         
-        body.put("message", message);
+        body.put(FIELD_MESSAGE, message);
 
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
@@ -136,10 +143,10 @@ public class GlobalExceptionHandler {
         log.error("[GLOBAL_EXCEPTION] runtime exception | path={} message={}", pathOf(request), ex.getMessage(), ex);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", OffsetDateTime.now());
-        body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        body.put("error", "Internal Server Error");
-        body.put("message", ex.getMessage());
+        body.put(FIELD_TIMESTAMP, OffsetDateTime.now());
+        body.put(FIELD_STATUS, HttpStatus.INTERNAL_SERVER_ERROR.value());
+        body.put(FIELD_ERROR, "Internal Server Error");
+        body.put(FIELD_MESSAGE, ex.getMessage());
 
         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -149,10 +156,10 @@ public class GlobalExceptionHandler {
         log.error("[GLOBAL_EXCEPTION] exception no controlada | path={} message={}", pathOf(request), ex.getMessage(), ex);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", OffsetDateTime.now());
-        body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        body.put("error", "Internal Server Error");
-        body.put("message", "Error interno del servidor");
+        body.put(FIELD_TIMESTAMP, OffsetDateTime.now());
+        body.put(FIELD_STATUS, HttpStatus.INTERNAL_SERVER_ERROR.value());
+        body.put(FIELD_ERROR, "Internal Server Error");
+        body.put(FIELD_MESSAGE, "Error interno del servidor");
 
         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -167,10 +174,10 @@ public class GlobalExceptionHandler {
         );
 
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", OffsetDateTime.now());
-        body.put("status", HttpStatus.METHOD_NOT_ALLOWED.value());
-        body.put("error", "Method Not Allowed");
-        body.put("message", "Metodo HTTP no soportado para este endpoint");
+        body.put(FIELD_TIMESTAMP, OffsetDateTime.now());
+        body.put(FIELD_STATUS, HttpStatus.METHOD_NOT_ALLOWED.value());
+        body.put(FIELD_ERROR, "Method Not Allowed");
+        body.put(FIELD_MESSAGE, "Metodo HTTP no soportado para este endpoint");
 
         return new ResponseEntity<>(body, HttpStatus.METHOD_NOT_ALLOWED);
     }
