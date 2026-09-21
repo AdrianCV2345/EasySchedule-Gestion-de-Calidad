@@ -63,7 +63,7 @@ public class AuthService {
         userRepository.save(user);
         log.info("[AUTH_REGISTRO] Usuario creado exitosamente: {}", normalizedUsername);
     }
-    public ResponseEntity<?> login(LoginRequest request) {
+    public ResponseEntity<Object> login(LoginRequest request) {
         String identifier = request.getIdentifier().trim();
         log.debug("[AUTH_LOGIN] normalizando identificador | identifier={}", identifier);
         log.info("[AUTH_LOGIN] intento autenticacion | identifier={}", identifier);
@@ -112,7 +112,7 @@ public class AuthService {
         );
     }
 
-    public ResponseEntity<?> loginWithGoogle(GoogleLoginRequest request) {
+    public ResponseEntity<Object> loginWithGoogle(GoogleLoginRequest request) {
         String credential = request.getCredential();
 
         if (credential == null || credential.isBlank()) {
@@ -149,14 +149,14 @@ public class AuthService {
         );
     }
 
-    public ResponseEntity<?> logout(String authorizationHeader) {
+    public ResponseEntity<Object> logout(String authorizationHeader) {
         String token = extractBearerToken(authorizationHeader);
         log.debug("[AUTH_LOGOUT] token extraido para revocacion | tokenPresent={}", !token.isBlank());
         sessionTokenService.revokeToken(token);
         return ResponseEntity.ok().body(Map.of("message", "Sesion cerrada correctamente"));
     }
 
-    public ResponseEntity<?> changePassword(Long userId, ChangePasswordRequest request) {
+    public ResponseEntity<Object> changePassword(Long userId, ChangePasswordRequest request) {
         log.debug("[AUTH_CHANGE_PASSWORD] inicio de cambio de contraseña | userId={}", userId);
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));

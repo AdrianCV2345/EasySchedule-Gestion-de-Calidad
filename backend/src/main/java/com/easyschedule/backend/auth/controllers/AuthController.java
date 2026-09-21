@@ -49,14 +49,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<Object> login(@Valid @RequestBody LoginRequest request) {
         String identifier = request.getIdentifier() == null ? "" : request.getIdentifier().trim();
         log.debug("[AUTH_LOGIN] request recibido | identifier={}", identifier);
         log.info("[AUTH_LOGIN] request recibido | identifier={}", identifier);
         return authService.login(request);
     }
     @PostMapping("/login/google")
-    public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
+    public ResponseEntity<Object> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
         log.debug(
             "[AUTH_GOOGLE] request recibido | credentialPresent={}",
             request.getCredential() != null && !request.getCredential().isBlank()
@@ -65,13 +65,13 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletRequest request) {
+    public ResponseEntity<Object> logout(HttpServletRequest request) {
         log.debug("[AUTH_LOGOUT] request recibido | authorizationHeaderPresent={}", request.getHeader("Authorization") != null);
         return authService.logout(request.getHeader("Authorization"));
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(
+    public ResponseEntity<Object> changePassword(
         @Valid @RequestBody ChangePasswordRequest request,
         Principal principal
     ) {
