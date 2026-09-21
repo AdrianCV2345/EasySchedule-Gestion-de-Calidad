@@ -68,6 +68,7 @@ public class Estudiante {
     private User user;
 
     public Estudiante() {
+        // Constructor sin parámetros requerido por JPA para instanciar la entidad.
     }
 
     public Long getId() {
