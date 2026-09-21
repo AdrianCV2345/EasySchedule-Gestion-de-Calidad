@@ -38,6 +38,8 @@ import java.util.stream.Collectors;
 @Service
 public class EstudianteMallaExportService {
 
+    private static final String ESTADO_APROBADA = "aprobada";
+
     private final EstudianteRepository estudianteRepository;
     private final MallaService mallaService;
     private final UniversidadRepository universidadRepository;
@@ -198,7 +200,7 @@ public class EstudianteMallaExportService {
 
     private void agregarMateriasFaltantes(Document document, List<MallaMateriaResponse> materias) throws DocumentException {
         List<MallaMateriaResponse> faltantes = materias.stream()
-            .filter(materia -> !"aprobada".equals(normalizarEstado(materia.estado())))
+            .filter(materia -> !ESTADO_APROBADA.equals(normalizarEstado(materia.estado())))
             .toList();
 
         Font sectionFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, new Color(32, 44, 64));
@@ -228,7 +230,7 @@ public class EstudianteMallaExportService {
     }
 
     private ReporteResumen calcularResumen(List<MallaMateriaResponse> materias) {
-        long aprobadas = materias.stream().filter(materia -> "aprobada".equals(normalizarEstado(materia.estado()))).count();
+        long aprobadas = materias.stream().filter(materia -> ESTADO_APROBADA.equals(normalizarEstado(materia.estado()))).count();
         long cursando = materias.stream().filter(materia -> "cursando".equals(normalizarEstado(materia.estado()))).count();
         long pendientes = materias.size() - aprobadas - cursando;
         double porcentaje = materias.isEmpty() ? 0.0 : (aprobadas * 100.0) / materias.size();
@@ -262,7 +264,7 @@ public class EstudianteMallaExportService {
 
     private String etiquetaEstado(String estado) {
         return switch (normalizarEstado(estado)) {
-            case "aprobada" -> "Aprobada";
+            case ESTADO_APROBADA -> "Aprobada";
             case "cursando" -> "En curso";
             default -> "Pendiente";
         };
