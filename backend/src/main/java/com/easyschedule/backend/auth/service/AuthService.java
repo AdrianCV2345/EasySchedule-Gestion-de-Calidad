@@ -26,6 +26,8 @@ public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
+    private static final String CREDENCIALES_INCORRECTAS_MESSAGE = "Credenciales incorrectas";
+
     private final UserRepository userRepository;
     private final PasswordEncoder encoder;
     private final SessionTokenService sessionTokenService;
@@ -77,7 +79,7 @@ public class AuthService {
             log.warn("[AUTH_LOGIN] fallo autenticacion | identifier={} motivo=usuario_no_encontrado", identifier);
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body("Credenciales incorrectas");
+                    .body(CREDENCIALES_INCORRECTAS_MESSAGE);
         }
     
         User user = userOpt.get();
@@ -87,14 +89,14 @@ public class AuthService {
             log.warn("[AUTH_LOGIN] fallo autenticacion | userId={} motivo=password_no_configurada", user.getId());
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body("Credenciales incorrectas");
+                    .body(CREDENCIALES_INCORRECTAS_MESSAGE);
         }
 
         if (!encoder.matches(request.getPassword(), user.getPasswordHash())) {
             log.warn("[AUTH_LOGIN] fallo autenticacion | userId={} motivo=password_incorrecta", user.getId());
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body("Credenciales incorrectas");
+                    .body(CREDENCIALES_INCORRECTAS_MESSAGE);
         }
 
     log.debug("[AUTH_LOGIN] credenciales validadas | userId={}", user.getId());
