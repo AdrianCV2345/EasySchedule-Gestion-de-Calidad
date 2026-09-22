@@ -197,19 +197,34 @@ public class HorarioGeneradorService {
     private boolean tieneCruceHorario(List<ParaleloEstructuradoDTO> horarioActual, ParaleloEstructuradoDTO nuevoParalelo) {
         for (ClaseBloqueDTO bloqueNuevo : nuevoParalelo.bloques()) {
             for (ParaleloEstructuradoDTO existente : horarioActual) {
-                for (ClaseBloqueDTO bloqueExistente : existente.bloques()) {
-                    if (bloqueExistente.dia().equalsIgnoreCase(bloqueNuevo.dia())) {
-                        // Verifica cruce: (InicioA < FinB) && (FinA > InicioB)
-                        if (bloqueExistente.horaInicio().isBefore(bloqueNuevo.horaFin()) &&
-                            bloqueExistente.horaFin().isAfter(bloqueNuevo.horaInicio())) {
-                            return true;
-                        }
-                    }
+                if (existeCruceConBloques(horarioActual, bloqueNuevo)) {
+                    return true;
                 }
             }
         }
         return false;
     }
+
+    private boolean existeCruceConBloques(List<ParaleloEstructuradoDTO> horarioActual, ClaseBloqueDTO bloqueNuevo) {
+        for (ParaleloEstructuradoDTO existente : horarioActual) {
+            for (ClaseBloqueDTO bloqueExistente : existente.bloques()) {
+                if (esMismoDia(bloqueExistente, bloqueNuevo) && hayCruceHorario(bloqueExistente, bloqueNuevo)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean esMismoDia(ClaseBloqueDTO bloqueExistente, ClaseBloqueDTO bloqueNuevo) {
+        return bloqueExistente.dia().equalsIgnoreCase(bloqueNuevo.dia());
+    }
+
+    private boolean hayCruceHorario(ClaseBloqueDTO bloqueExistente, ClaseBloqueDTO bloqueNuevo) {
+        return bloqueExistente.horaInicio().isBefore(bloqueNuevo.horaFin()) &&
+            bloqueExistente.horaFin().isAfter(bloqueNuevo.horaInicio());
+    }
+
 
     private double calcularPuntaje(List<ParaleloEstructuradoDTO> combinacion, List<String> prioridades) {
         if (combinacion.isEmpty() || prioridades == null) return 0.0;
