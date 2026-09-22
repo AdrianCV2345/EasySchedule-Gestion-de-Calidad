@@ -36,77 +36,111 @@ public class HorarioGeneradorService {
     }
 
     public List<HorarioGeneradoResponse> generarHorarios(HorarioGeneradorRequest request) {
-        // 1. Validación de Disponibilidad
         List<MallaMateriaResponse> disponibles = mallaDisponibilidadService.getMateriasDisponibles(request.mallaId(), request.userId());
-        Set<Long> disponiblesIds = disponibles.stream().map(MallaMateriaResponse::id).collect(Collectors.toSet());
-
-        for (MateriaSeleccionadaRequest ms : request.materiasSeleccionadas()) {
-            if (!disponiblesIds.contains(ms.materiaId())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La materia con ID " + ms.materiaId() + " no está disponible o no existe en la malla.");
-            }
-        }
-
-        // 2. Preparación de Datos
-        List<List<ParaleloEstructuradoDTO>> materiasConParalelos = new ArrayList<>();
-        Map<Long, String> materiaNombres = disponibles.stream().collect(Collectors.toMap(MallaMateriaResponse::id, MallaMateriaResponse::nombreMateria));
-
-        for (MateriaSeleccionadaRequest ms : request.materiasSeleccionadas()) {
-            List<OfertaMateria> todas = ofertaMateriaRepository.findByMallaMateriaId(ms.materiaId());
-            List<OfertaMateria> ofertas;
-            if (ms.paralelos() == null || ms.paralelos().isEmpty()) {
-                ofertas = todas;
-            } else {
-                ofertas = todas.stream()
-                    .filter(o -> ms.paralelos().contains(o.getParalelo()))
-                    .collect(Collectors.toList());
-            }
-            
-            List<ParaleloEstructuradoDTO> paralelosParsed = new ArrayList<>();
-
-            for (OfertaMateria oferta : ofertas) {
-                // Ensure the offer belongs to the selected materia
-                if (!oferta.getMallaMateriaId().equals(ms.materiaId())) continue;
-
-                List<ClaseBloqueDTO> bloques = parseHorarioJson(oferta.getHorarioJson());
-                String nombreMateria = materiaNombres.getOrDefault(ms.materiaId(), "Desconocida");
-                
-                paralelosParsed.add(new ParaleloEstructuradoDTO(
-                        oferta.getId(),
-                        oferta.getMallaMateriaId(),
-                        nombreMateria,
-                        oferta.getParalelo(),
-                        oferta.getDocente(),
-                        oferta.getAula(),
-                        bloques,
-                        false // esMateriaActual
-                ));
-            }
-
-            if (!paralelosParsed.isEmpty()) {
-                materiasConParalelos.add(paralelosParsed);
-            }
-        }
+        validateSelectedMaterias(request.materiasSeleccionadas(), disponibles);
+        List<List<ParaleloEstructuradoDTO>> materiasConParalelos = buildMateriasConParalelos(
+            request.materiasSeleccionadas(), disponibles
+        );
 
         if (materiasConParalelos.isEmpty()) {
             return Collections.emptyList();
         }
 
-        // 3. Algoritmo de Backtracking
         PriorityQueue<HorarioGeneradoResponse> mejoresHorarios = new PriorityQueue<>(Collections.reverseOrder()); // Max-Heap for the worst score at top
-        
         HorarioActualResponse actualResponse = horarioRecomendadoService.getHorarioActualByUserId(request.userId());
         List<ParaleloEstructuradoDTO> combinacionActual = mapActualToParalelos(actualResponse.clases());
-        
-        long startTime = System.currentTimeMillis();
-        backtrack(0, materiasConParalelos, combinacionActual, mejoresHorarios, request.prioridades(), startTime);
+        backtrack(
+            0,
+            materiasConParalelos,
+            combinacionActual,
+            mejoresHorarios,
+            request.prioridades(),
+            System.currentTimeMillis()
+        );
+        return sortResults(mejoresHorarios);
+    }
 
-        // Convert Max-Heap to sorted list (Min to Max score)
+    private void validateSelectedMaterias(
+            List<MateriaSeleccionadaRequest> seleccionadas,
+            List<MallaMateriaResponse> disponibles) {
+        Set<Long> disponiblesIds = disponibles.stream()
+            .map(MallaMateriaResponse::id)
+            .collect(Collectors.toSet());
+
+        for (MateriaSeleccionadaRequest seleccionada : seleccionadas) {
+            if (disponiblesIds.contains(seleccionada.materiaId())) {
+                continue;
+            }
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "La materia con ID " + seleccionada.materiaId() + " no está disponible o no existe en la malla."
+            );
+        }
+    }
+
+    private List<List<ParaleloEstructuradoDTO>> buildMateriasConParalelos(
+            List<MateriaSeleccionadaRequest> seleccionadas,
+            List<MallaMateriaResponse> disponibles) {
+        Map<Long, String> materiaNombres = disponibles.stream()
+            .collect(Collectors.toMap(MallaMateriaResponse::id, MallaMateriaResponse::nombreMateria));
+
+        List<List<ParaleloEstructuradoDTO>> resultado = new ArrayList<>();
+        for (MateriaSeleccionadaRequest seleccionada : seleccionadas) {
+            List<ParaleloEstructuradoDTO> paralelos = buildParalelos(seleccionada, materiaNombres);
+            if (!paralelos.isEmpty()) {
+                resultado.add(paralelos);
+            }
+        }
+        return resultado;
+    }
+
+    private List<ParaleloEstructuradoDTO> buildParalelos(
+            MateriaSeleccionadaRequest seleccionada,
+            Map<Long, String> materiaNombres) {
+        List<OfertaMateria> ofertas = ofertaMateriaRepository.findByMallaMateriaId(seleccionada.materiaId())
+            .stream()
+            .filter(oferta -> isSelectedParallel(seleccionada, oferta))
+            .toList();
+
+        List<ParaleloEstructuradoDTO> resultado = new ArrayList<>();
+        for (OfertaMateria oferta : ofertas) {
+            resultado.add(toParalelo(oferta, seleccionada.materiaId(), materiaNombres));
+        }
+        return resultado;
+    }
+
+    private boolean isSelectedParallel(MateriaSeleccionadaRequest seleccionada, OfertaMateria oferta) {
+        if (!Objects.equals(oferta.getMallaMateriaId(), seleccionada.materiaId())) {
+            return false;
+        }
+        return seleccionada.paralelos() == null
+            || seleccionada.paralelos().isEmpty()
+            || seleccionada.paralelos().contains(oferta.getParalelo());
+    }
+
+    private ParaleloEstructuradoDTO toParalelo(
+            OfertaMateria oferta,
+            Long materiaId,
+            Map<Long, String> materiaNombres) {
+        return new ParaleloEstructuradoDTO(
+            oferta.getId(),
+            oferta.getMallaMateriaId(),
+            materiaNombres.getOrDefault(materiaId, "Desconocida"),
+            oferta.getParalelo(),
+            oferta.getDocente(),
+            oferta.getAula(),
+            parseHorarioJson(oferta.getHorarioJson()),
+            false
+        );
+    }
+
+    private List<HorarioGeneradoResponse> sortResults(
+            PriorityQueue<HorarioGeneradoResponse> mejoresHorarios) {
         List<HorarioGeneradoResponse> resultado = new ArrayList<>();
         while (!mejoresHorarios.isEmpty()) {
             resultado.add(mejoresHorarios.poll());
         }
         Collections.reverse(resultado);
-
         return resultado;
     }
 
@@ -118,35 +152,42 @@ public class HorarioGeneradorService {
             List<String> prioridades,
             long startTime) {
         
-        // Timeout check (1500 ms)
         if (System.currentTimeMillis() - startTime > 1500) {
             return;
         }
 
-        // Branch and Bound (Poda por Puntaje)
         double puntajeParcial = calcularPuntaje(combinacionActual, prioridades);
         if (mejoresHorarios.size() == 50 && puntajeParcial >= mejoresHorarios.peek().puntajeTotal()) {
             return;
         }
 
-        // Caso Base
         if (indexMateria == materiasConParalelos.size()) {
-            List<HorarioClaseResponse> clases = mapToHorarioClase(combinacionActual);
-            HorarioGeneradoResponse nuevoHorario = new HorarioGeneradoResponse(puntajeParcial, clases);
-            
-            mejoresHorarios.offer(nuevoHorario);
-            if (mejoresHorarios.size() > 50) {
-                mejoresHorarios.poll(); // Remove the worst
-            }
+            addResult(combinacionActual, puntajeParcial, mejoresHorarios);
             return;
         }
 
-        // Recursividad
-        for (ParaleloEstructuradoDTO paralelo : materiasConParalelos.get(indexMateria)) {
-            if (tieneCruceHorario(combinacionActual, paralelo)) {
-                continue;
-            }
+        exploreParallels(indexMateria, materiasConParalelos, combinacionActual, mejoresHorarios, prioridades, startTime);
+    }
 
+    private void addResult(
+            List<ParaleloEstructuradoDTO> combinacionActual,
+            double puntaje,
+            PriorityQueue<HorarioGeneradoResponse> mejoresHorarios) {
+        mejoresHorarios.offer(new HorarioGeneradoResponse(puntaje, mapToHorarioClase(combinacionActual)));
+        if (mejoresHorarios.size() > 50) {
+            mejoresHorarios.poll();
+        }
+    }
+
+    private void exploreParallels(
+            int indexMateria,
+            List<List<ParaleloEstructuradoDTO>> materiasConParalelos,
+            List<ParaleloEstructuradoDTO> combinacionActual,
+            PriorityQueue<HorarioGeneradoResponse> mejoresHorarios,
+            List<String> prioridades,
+            long startTime) {
+        for (ParaleloEstructuradoDTO paralelo : materiasConParalelos.get(indexMateria)) {
+            if (tieneCruceHorario(combinacionActual, paralelo)) continue;
             combinacionActual.add(paralelo);
             backtrack(indexMateria + 1, materiasConParalelos, combinacionActual, mejoresHorarios, prioridades, startTime);
             combinacionActual.remove(combinacionActual.size() - 1);

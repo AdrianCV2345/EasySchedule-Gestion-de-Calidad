@@ -204,6 +204,12 @@ public class HorarioRecomendadoService {
 
     private String toCsv(HorarioActualResponse horario) {
         StringBuilder builder = new StringBuilder();
+        appendCsvHeader(builder, horario);
+        appendCsvClasses(builder, horario);
+        return builder.toString();
+    }
+
+    private void appendCsvHeader(StringBuilder builder, HorarioActualResponse horario) {
         appendCsvRow(builder, TIPO_HORARIO_ACADEMICO);
         appendCsvRow(builder, LABEL_UNIVERSIDAD, metaValue(horario == null ? null : horario.universidad()));
         appendCsvRow(builder, LABEL_CARRERA, metaValue(horario == null ? null : horario.carrera()));
@@ -212,30 +218,26 @@ public class HorarioRecomendadoService {
         appendCsvRow(builder, LABEL_SEMESTRE_ACTUAL, metaValue(horario == null ? null : horario.semestreActual()));
         appendCsvRow(builder);
         appendCsvRow(builder, LABEL_MATERIA, LABEL_PARALELO, "Dia", "HoraInicio", "HoraFin", "Aula", LABEL_DOCENTE);
+    }
 
+    private void appendCsvClasses(StringBuilder builder, HorarioActualResponse horario) {
         if (horario == null || horario.clases() == null || horario.clases().isEmpty()) {
-            return builder.toString();
+            return;
         }
-
         for (HorarioClaseResponse clase : horario.clases()) {
-            builder
-                .append(csv(clase.materia()))
-                .append(',')
-                .append(csv(clase.paralelo()))
-                .append(',')
-                .append(csv(clase.dia()))
-                .append(',')
-                .append(csv(clase.horaInicio()))
-                .append(',')
-                .append(csv(clase.horaFin()))
-                .append(',')
-                .append(csv(clase.aula()))
-                .append(',')
-                .append(csv(clase.docente()))
-                .append('\n');
+            appendCsvClass(builder, clase);
         }
+    }
 
-        return builder.toString();
+    private void appendCsvClass(StringBuilder builder, HorarioClaseResponse clase) {
+        builder
+            .append(csv(clase.materia())).append(',')
+            .append(csv(clase.paralelo())).append(',')
+            .append(csv(clase.dia())).append(',')
+            .append(csv(clase.horaInicio())).append(',')
+            .append(csv(clase.horaFin())).append(',')
+            .append(csv(clase.aula())).append(',')
+            .append(csv(clase.docente())).append('\n');
     }
 
     private void appendCsvRow(StringBuilder builder, String... values) {
