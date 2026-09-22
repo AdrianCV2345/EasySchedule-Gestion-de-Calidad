@@ -209,77 +209,22 @@ public class EstudianteService {
     @Transactional
     public EstudianteResponse updateProfile(String username, PerfilUpdateRequest request) {
         Long estudianteId = null;
+
         try {
             log.debug("[PERFIL-EDICION] inicio actualización de perfil | identifier={}", username);
+
             Estudiante estudiante = getOrCreateByIdentifier(username);
             estudianteId = estudiante.getId();
 
-            User user = estudiante.getUser();
-            if (user == null) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "El estudiante no tiene un usuario asociado");
-            }
+            User user = validarUsuarioAsociado(estudiante);
 
-            String usernameActual = user.getUsername();
-            String emailActual = user.getEmail();
-            String nombreActual = estudiante.getNombre();
-            String apellidoActual = estudiante.getApellido();
-            String carnetActual = estudiante.getCarnetIdentidad();
-            LocalDate fechaNacimientoActual = estudiante.getFechaNacimiento();
+            PerfilDatosActualizados datos = prepararDatosActualizados(request);
 
-            String usernameNormalizado = request.username().trim();
-            String emailNormalizado = request.email().trim().toLowerCase(Locale.ROOT);
-            String carnetNormalizado = normalizeCarnetIdentidad(request.carnetIdentidad());
-            String nombreNormalizado = formatProperName(request.nombre());
-            String apellidoNormalizado = formatProperName(request.apellido());
+            validarDisponibilidadDatos(estudiante, user, datos);
 
-            if (!user.getUsername().equalsIgnoreCase(usernameNormalizado)
-                && (Boolean.TRUE.equals(userRepository.existsByUsernameIgnoreCase(usernameNormalizado))
-                    || estudianteRepository.existsByUsernameIgnoreCase(usernameNormalizado))) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Error: El nombre de usuario ya está en uso");
-            }
+            List<String> camposModificados = detectarCambios(estudiante, user, datos);
 
-            if (!user.getEmail().equalsIgnoreCase(emailNormalizado)
-                && (Boolean.TRUE.equals(userRepository.existsByEmailIgnoreCase(emailNormalizado))
-                    || estudianteRepository.existsByCorreoIgnoreCase(emailNormalizado))) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Error: El correo electrónico ya está registrado");
-            }
-
-            String carnetActualNormalizado = carnetActual == null ? "" : carnetActual;
-            if (!carnetActualNormalizado.equalsIgnoreCase(carnetNormalizado)
-                && estudianteRepository.existsByCarnetIdentidadIgnoreCase(carnetNormalizado)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Error: El carnet de identidad ya está en uso");
-            }
-
-            user.setUsername(usernameNormalizado);
-            user.setEmail(emailNormalizado);
-
-            estudiante.setUsername(usernameNormalizado);
-            estudiante.setCorreo(emailNormalizado);
-            estudiante.setNombre(nombreNormalizado);
-            estudiante.setApellido(apellidoNormalizado);
-            estudiante.setCarnetIdentidad(carnetNormalizado);
-            estudiante.setFechaNacimiento(request.fechaNacimiento());
-            estudiante.setProfileCompleted(isProfileCompleted(estudiante));
-
-            List<String> camposModificados = new ArrayList<>();
-            if (!equalsIgnoreCase(usernameActual, usernameNormalizado)) {
-                camposModificados.add("username");
-            }
-            if (!equalsIgnoreCase(emailActual, emailNormalizado)) {
-                camposModificados.add("correo");
-            }
-            if (!equalsNullable(nombreActual, nombreNormalizado)) {
-                camposModificados.add("nombre");
-            }
-            if (!equalsNullable(apellidoActual, apellidoNormalizado)) {
-                camposModificados.add("apellido");
-            }
-            if (!equalsIgnoreCase(carnetActual, carnetNormalizado)) {
-                camposModificados.add("carnetIdentidad");
-            }
-            if (!equalsNullable(fechaNacimientoActual, request.fechaNacimiento())) {
-                camposModificados.add("fechaNacimiento");
-            }
+            actualizarPerfil(estudiante, user, datos);
 
             userRepository.save(user);
             Estudiante estudianteActualizado = estudianteRepository.save(estudiante);
@@ -291,23 +236,26 @@ public class EstudianteService {
             );
 
             return toResponse(estudianteActualizado);
+
         } catch (ResourceNotFoundException ex) {
             log.warn(
-                "[PERFIL-EDICION] Fallo en actualización de perfil para el estudiante con ID: {}. Causa: {}",
+                "[PERFIL-EDICION] Fallo actualización estudiante ID: {}. Causa: {}",
                 estudianteId == null ? "N/A" : estudianteId,
                 ex.getMessage()
             );
             throw ex;
+
         } catch (ResponseStatusException ex) {
             log.warn(
-                "[PERFIL-EDICION] Fallo en actualización de perfil para el estudiante con ID: {}. Causa: {}",
+                "[PERFIL-EDICION] Fallo actualización estudiante ID: {}. Causa: {}",
                 estudianteId == null ? "N/A" : estudianteId,
                 ex.getReason()
             );
             throw ex;
+
         } catch (RuntimeException ex) {
             log.error(
-                "[PERFIL-EDICION] Fallo en actualización de perfil para el estudiante con ID: {}. Causa: {}",
+                "[PERFIL-EDICION] Fallo actualización estudiante ID: {}. Causa: {}",
                 estudianteId == null ? "N/A" : estudianteId,
                 ex.getMessage(),
                 ex
@@ -315,6 +263,132 @@ public class EstudianteService {
             throw ex;
         }
     }
+
+    private User validarUsuarioAsociado(Estudiante estudiante) {
+        User user = estudiante.getUser();
+
+        if (user == null) {
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "El estudiante no tiene un usuario asociado"
+            );
+        }
+
+        return user;
+    }
+
+    private PerfilDatosActualizados prepararDatosActualizados(PerfilUpdateRequest request) {
+        return new PerfilDatosActualizados(
+            request.username().trim(),
+            request.email().trim().toLowerCase(Locale.ROOT),
+            normalizeCarnetIdentidad(request.carnetIdentidad()),
+            formatProperName(request.nombre()),
+            formatProperName(request.apellido()),
+            request.fechaNacimiento()
+        );
+    }
+
+
+    private void validarDisponibilidadDatos(
+        Estudiante estudiante,
+        User user,
+        PerfilDatosActualizados datos
+    ) {
+
+        if (!user.getUsername().equalsIgnoreCase(datos.username())
+            && (Boolean.TRUE.equals(userRepository.existsByUsernameIgnoreCase(datos.username()))
+            || estudianteRepository.existsByUsernameIgnoreCase(datos.username()))) {
+
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Error: El nombre de usuario ya está en uso"
+            );
+        }
+
+
+        if (!user.getEmail().equalsIgnoreCase(datos.email())
+            && (Boolean.TRUE.equals(userRepository.existsByEmailIgnoreCase(datos.email()))
+            || estudianteRepository.existsByCorreoIgnoreCase(datos.email()))) {
+
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Error: El correo electrónico ya está registrado"
+            );
+        }
+
+
+        String carnetActual = estudiante.getCarnetIdentidad() == null
+            ? ""
+            : estudiante.getCarnetIdentidad();
+
+
+        if (!carnetActual.equalsIgnoreCase(datos.carnet())
+            && estudianteRepository.existsByCarnetIdentidadIgnoreCase(datos.carnet())) {
+
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Error: El carnet de identidad ya está en uso"
+            );
+        }
+    }
+
+
+    private void actualizarPerfil(
+        Estudiante estudiante,
+        User user,
+        PerfilDatosActualizados datos
+    ) {
+
+        user.setUsername(datos.username());
+        user.setEmail(datos.email());
+
+        estudiante.setUsername(datos.username());
+        estudiante.setCorreo(datos.email());
+        estudiante.setNombre(datos.nombre());
+        estudiante.setApellido(datos.apellido());
+        estudiante.setCarnetIdentidad(datos.carnet());
+        estudiante.setFechaNacimiento(datos.fechaNacimiento());
+        estudiante.setProfileCompleted(isProfileCompleted(estudiante));
+    }
+
+    private List<String> detectarCambios(
+        Estudiante estudiante,
+        User user,
+        PerfilDatosActualizados datos
+    ) {
+
+        List<String> cambios = new ArrayList<>();
+
+        if (!equalsIgnoreCase(user.getUsername(), datos.username())) {
+            cambios.add("username");
+        }
+
+        if (!equalsIgnoreCase(user.getEmail(), datos.email())) {
+            cambios.add("correo");
+        }
+
+        if (!equalsNullable(estudiante.getNombre(), datos.nombre())) {
+            cambios.add("nombre");
+        }
+
+        if (!equalsNullable(estudiante.getApellido(), datos.apellido())) {
+            cambios.add("apellido");
+        }
+
+        if (!equalsIgnoreCase(estudiante.getCarnetIdentidad(), datos.carnet())) {
+            cambios.add("carnetIdentidad");
+        }
+
+        if (!equalsNullable(estudiante.getFechaNacimiento(), datos.fechaNacimiento())) {
+            cambios.add("fechaNacimiento");
+        }
+
+        return cambios;
+    }
+
+    
+
+
 
     private boolean equalsIgnoreCase(String left, String right) {
         if (left == null && right == null) {
@@ -420,4 +494,15 @@ public class EstudianteService {
                 .orElseThrow(() -> ex);
         }
     }
+
+
+    private record PerfilDatosActualizados(
+        String username,
+        String email,
+        String carnet,
+        String nombre,
+        String apellido,
+        LocalDate fechaNacimiento
+    ) {}
+
 }
