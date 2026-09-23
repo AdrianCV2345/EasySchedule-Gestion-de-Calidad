@@ -26,15 +26,12 @@ public class MallaDisponibilidadService {
     public List<MallaMateriaResponse> getMateriasDisponibles(Long mallaId, Long userId) {
         List<MallaMateriaResponse> todasLasMaterias = mallaService.findMateriasByMalla(mallaId, userId);
 
-        // Mapas para el algoritmo de grafos
         Map<Long, List<Long>> adj = new HashMap<>();
         Map<Long, Integer> inDegree = inicializarGrafo(todasLasMaterias, adj);
 
-        // Propagación de materias aprobadas
         Map<Long, Integer> effectiveInDegree = new HashMap<>(inDegree);
         propagarMateriasAprobadas(effectiveInDegree, todasLasMaterias, adj);
 
-        // Filtrar las materias que están disponibles
         return todasLasMaterias.stream()
             .filter(m -> !estaCompletadaOCursando(m.estado())
                 && effectiveInDegree.getOrDefault(m.id(), 0) <= 0)

@@ -47,133 +47,172 @@ public class MallaImportService {
 
     @Transactional
     public MallaImportResponse importarMalla(MallaImportRequest request) {
-        logger.info("Iniciando importación de malla: nombre={}, carreraId={}, totalMaterias={}",
-            request.nombre(), request.carreraId(), request.materias() != null ? request.materias().size() : 0);
+        logger.info("Iniciando importación de malla");
+        validarRequest(request);
+        validarCarrera(request.carreraId());
+        String version = obtenerVersion(request);
+        validarMallaExistente(
+            request.carreraId(),
+            version
+        );
 
+        Malla malla = crearMalla(request,version);
+        Map<String,MallaMateria> materias = crearMateriasDeMalla(request.materias(),malla);
+        int prerequisitos = crearPrerequisitos(request.materias(),materias);
+        return construirRespuesta(
+            malla,
+            request.materias().size(),
+            prerequisitos
+        );
+    }
+
+    private void validarRequest(MallaImportRequest request) {
         if (request.nombre() == null || request.nombre().isBlank()) {
-            logger.warn("Error de validación: nombre de malla requerido");
             throw new IllegalArgumentException("El nombre de la malla es requerido");
         }
+
         if (request.carreraId() == null) {
-            logger.warn("Error de validación: carreraId requerido");
             throw new IllegalArgumentException("El ID de la carrera es requerido");
         }
+
         if (request.materias() == null || request.materias().isEmpty()) {
-            logger.warn("Error de validación: no se proporcionaron materias");
             throw new IllegalArgumentException("Debe proporcionar al menos una materia");
         }
+    }
 
-        // Validar que la carrera exista
-        if (!carreraRepository.existsById(request.carreraId())) {
-            logger.warn("Error: carrera con id={} no existe", request.carreraId());
-            throw new IllegalArgumentException("La carrera con ID " + request.carreraId() + " no existe");
+    private void validarCarrera(Long carreraId) {
+        if (!carreraRepository.existsById(carreraId)) {
+            throw new IllegalArgumentException("La carrera con ID " + carreraId + " no existe");
         }
+    }
 
-        // Validar que no exista una malla activa con la misma carrera y versión
-        String version = request.version() != null ? request.version() : "1.0";
-        if (mallaRepository.existsByCarreraIdAndVersionAndActiveTrue(request.carreraId(), version)) {
-            logger.warn("Error: ya existe una malla activa para carreraId={} con versión {}", request.carreraId(), version);
+    private String obtenerVersion(MallaImportRequest request) {
+        return request.version() != null ? request.version() : "1.0";
+    }
+
+    private void validarMallaExistente(Long carreraId, String version) {
+        if (mallaRepository.existsByCarreraIdAndVersionAndActiveTrue(carreraId, version)) {
             throw new IllegalArgumentException("Ya existe una malla activa para esta carrera con versión " + version + ". Use una versión diferente.");
         }
+    }
 
+    private Malla crearMalla(MallaImportRequest request, String version) {
         Malla malla = new Malla();
+
         malla.setNombre(request.nombre());
-        malla.setVersion(request.version() != null ? request.version() : "1.0");
+        malla.setVersion(version);
         malla.setCarreraId(request.carreraId());
         malla.setActive(true);
-        malla = mallaRepository.save(malla);
-        logger.info("Malla creada: id={}, nombre={}, version={}", malla.getId(), malla.getNombre(), malla.getVersion());
 
+        return mallaRepository.save(malla);
+    }
+
+    private Map<String, MallaMateria> crearMateriasDeMalla(List<MateriaImportRequest> materias, Malla malla) {
         Map<String, MallaMateria> materiasMap = new HashMap<>();
-        int prerequisitosCount = 0;
 
-        for (MateriaImportRequest matReq : request.materias()) {
-            if (matReq.codigo() == null || matReq.codigo().isBlank()) {
-                logger.warn("Error de validación: código de materia requerido");
-                throw new IllegalArgumentException("El código de la materia es requerido");
-            }
-            if (matReq.nombre() == null || matReq.nombre().isBlank()) {
-                logger.warn("Error de validación: nombre de materia requerido para código={}", matReq.codigo());
-                throw new IllegalArgumentException("El nombre de la materia es requerido");
-            }
-            if (matReq.semestre() == null || matReq.semestre() < 1) {
-                logger.warn("Error de validación: semestre inválido para materia código={}", matReq.codigo());
-                throw new IllegalArgumentException("El semestre sugerido debe ser mayor a 0");
-            }
+        for (MateriaImportRequest matReq : materias) {
+            validarMateria(matReq);
 
-            Materia materia = materiaRepository.findByCodigo(matReq.codigo())
-                .orElseGet(() -> {
-                    Materia nueva = new Materia();
-                    nueva.setCodigo(matReq.codigo());
-                    nueva.setNombre(matReq.nombre());
-                    nueva.setCreditos(matReq.creditos() != null ? matReq.creditos().shortValue() : 0);
-                    nueva.setActive(true);
-                    logger.info("Nueva materia creada: codigo={}, nombre={}", matReq.codigo(), matReq.nombre());
-                    return materiaRepository.save(nueva);
-                });
-
-            if (!materia.getNombre().equals(matReq.nombre()) && matReq.nombre() != null) {
-                materia.setNombre(matReq.nombre());
-                materiaRepository.save(materia);
-                logger.info("Nombre de materia actualizado: codigo={}, nuevoNombre={}", matReq.codigo(), matReq.nombre());
-            }
+            Materia materia = obtenerOCrearMateria(matReq);
 
             MallaMateria mallaMateria = new MallaMateria();
             mallaMateria.setMalla(malla);
             mallaMateria.setMateria(materia);
             mallaMateria.setSemestreSugerido(matReq.semestre().shortValue());
+
             mallaMateria = mallaMateriaRepository.save(mallaMateria);
-            logger.debug("MallaMateria guardada: id={}, materiaId={}, semestre={}", mallaMateria.getId(), materia.getId(), matReq.semestre());
 
             materiasMap.put(matReq.codigo(), mallaMateria);
         }
 
-        logger.info("Procesando prerequisitos para {} materias", request.materias().size());
-        for (MateriaImportRequest matReq : request.materias()) {
-            if (matReq.prerequisitos() != null && !matReq.prerequisitos().isEmpty()) {
-                MallaMateria mallaMateria = materiasMap.get(matReq.codigo());
-                for (String prereqCodigo : matReq.prerequisitos()) {
-                    MallaMateria prereq = materiasMap.get(prereqCodigo);
-                    if (prereq == null) {
-                        logger.warn("Prerequisito con codigo {} no encontrado en la malla", prereqCodigo);
-                        throw new IllegalArgumentException("La materia con codigo '" + prereqCodigo + "' no existe en la malla actual");
-                    }
-                    if (prereq.getId().equals(mallaMateria.getId())) {
-                        throw new IllegalArgumentException("La materia '" + matReq.codigo() + "' no puede ser prerequisito de si misma");
-                    }
+        return materiasMap;
+    }
 
-                    // Check for inverse relationship
-                    List<Prerequisito> inversePair = prerequisitoRepository.findInversePair(mallaMateria.getId(), prereq.getId());
-                    if (!inversePair.isEmpty()) {
-                        throw new IllegalArgumentException("Relacion inversa de prerequisito detectada entre '" +
-                            matReq.codigo() + "' y '" + prereqCodigo + "'");
-                    }
+    private void validarMateria(MateriaImportRequest matReq) {
+        if (matReq.codigo() == null || matReq.codigo().isBlank()) {
+            throw new IllegalArgumentException("El código de la materia es requerido");
+        }
 
-                    boolean exists = prerequisitoRepository.existsByMallaMateria_IdAndPrerequisito_Id(
-                        mallaMateria.getId(), prereq.getId());
-                    if (!exists) {
-                        Prerequisito pre = new Prerequisito();
-                        pre.setMallaMateria(mallaMateria);
-                        pre.setPrerequisito(prereq);
-                        prerequisitoRepository.save(pre);
-                        prerequisitosCount++;
-                        logger.debug("Prerequisito creado: materia={} requiere {}", matReq.codigo(), prereqCodigo);
-                    } else {
-                        logger.debug("Prerequisito ya existente: materia={} requiere {}", matReq.codigo(), prereqCodigo);
-                    }
+        if (matReq.nombre() == null || matReq.nombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre de la materia es requerido");
+        }
+
+        if (matReq.semestre() == null || matReq.semestre() < 1) {
+            throw new IllegalArgumentException("El semestre sugerido debe ser mayor a 0");
+        }
+    }
+
+    private Materia obtenerOCrearMateria(MateriaImportRequest matReq) {
+        return materiaRepository.findByCodigo(matReq.codigo())
+            .orElseGet(() -> {
+                Materia nueva = new Materia();
+
+                nueva.setCodigo(matReq.codigo());
+                nueva.setNombre(matReq.nombre());
+                nueva.setCreditos(matReq.creditos() != null ? matReq.creditos().shortValue() : 0);
+                nueva.setActive(true);
+
+                return materiaRepository.save(nueva);
+            });
+    }
+
+    private int crearPrerequisitos(List<MateriaImportRequest> materias, Map<String, MallaMateria> materiasMap) {
+        int prerequisitosCount = 0;
+
+        for (MateriaImportRequest matReq : materias) {
+            if (matReq.prerequisitos() == null || matReq.prerequisitos().isEmpty()) {
+                continue;
+            }
+
+            MallaMateria mallaMateria = materiasMap.get(matReq.codigo());
+
+            for (String prereqCodigo : matReq.prerequisitos()) {
+                MallaMateria prereq = materiasMap.get(prereqCodigo);
+
+                if (prereq == null) {
+                    throw new IllegalArgumentException("La materia con codigo '" + prereqCodigo + "' no existe en la malla actual");
                 }
+
+                if (prereq.getId().equals(mallaMateria.getId())) {
+                    throw new IllegalArgumentException("La materia '" + matReq.codigo() + "' no puede ser prerequisito de si misma");
+                }
+
+                crearPrerequisitoSiNoExiste(mallaMateria, prereq);
+
+                prerequisitosCount++;
             }
         }
 
-        logger.info("Importación finalizada exitosamente: mallaId={}, materiasImportadas={}, prerequisitosImportados={}",
-            malla.getId(), request.materias().size(), prerequisitosCount);
+        return prerequisitosCount;
+    }
 
+    private void crearPrerequisitoSiNoExiste(MallaMateria mallaMateria, MallaMateria prereq) {
+        boolean exists = prerequisitoRepository.existsByMallaMateria_IdAndPrerequisito_Id(
+            mallaMateria.getId(),
+            prereq.getId()
+        );
+
+        if (!exists) {
+            Prerequisito pre = new Prerequisito();
+
+            pre.setMallaMateria(mallaMateria);
+            pre.setPrerequisito(prereq);
+
+            prerequisitoRepository.save(pre);
+        }
+    }
+
+    private MallaImportResponse construirRespuesta(Malla malla, int totalMaterias, int prerequisitos) {
         return new MallaImportResponse(
             malla.getId(),
             malla.getNombre(),
-            request.materias().size(),
-            prerequisitosCount,
+            totalMaterias,
+            prerequisitos,
             "Malla importada exitosamente"
         );
-    }
+    }    
+
+    
+
+
 }

@@ -13,12 +13,12 @@ import java.time.LocalDate;
 public record EstudianteUpdateRequest(
     @NotBlank(message = "El nombre es obligatorio")
     @Size(min = 3, max = 100, message = "El nombre debe tener entre 3 y 100 caracteres")
-    @Pattern(regexp = "^[A-Za-zÁÉÍÓÚáéíóúÑñ]+(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]+)*$", message = "El nombre solo puede contener letras, espacios y acentos")
+    @Pattern(regexp = "^[A-Za-zÁÉÍÓÚáéíóúÑñ]++(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]++)*+$", message = "El nombre solo puede contener letras, espacios y acentos")
     String nombre,
 
     @NotBlank(message = "Los apellidos son obligatorios")
     @Size(min = 3, max = 100, message = "Los apellidos deben tener entre 3 y 100 caracteres")
-    @Pattern(regexp = "^[A-Za-zÁÉÍÓÚáéíóúÑñ]+(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]+)*$", message = "Los apellidos solo pueden contener letras, espacios y acentos")
+    @Pattern(regexp = "^[A-Za-zÁÉÍÓÚáéíóúÑñ]++(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]++)*+$", message = "Los apellidos solo pueden contener letras, espacios y acentos")
     String apellido,
 
     @NotBlank(message = "El carnet de identidad es obligatorio")

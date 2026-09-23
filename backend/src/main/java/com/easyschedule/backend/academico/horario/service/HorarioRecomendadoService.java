@@ -204,6 +204,12 @@ public class HorarioRecomendadoService {
 
     private String toCsv(HorarioActualResponse horario) {
         StringBuilder builder = new StringBuilder();
+        appendCsvHeader(builder, horario);
+        appendCsvClasses(builder, horario);
+        return builder.toString();
+    }
+
+    private void appendCsvHeader(StringBuilder builder, HorarioActualResponse horario) {
         appendCsvRow(builder, TIPO_HORARIO_ACADEMICO);
         appendCsvRow(builder, LABEL_UNIVERSIDAD, metaValue(horario == null ? null : horario.universidad()));
         appendCsvRow(builder, LABEL_CARRERA, metaValue(horario == null ? null : horario.carrera()));
@@ -212,30 +218,26 @@ public class HorarioRecomendadoService {
         appendCsvRow(builder, LABEL_SEMESTRE_ACTUAL, metaValue(horario == null ? null : horario.semestreActual()));
         appendCsvRow(builder);
         appendCsvRow(builder, LABEL_MATERIA, LABEL_PARALELO, "Dia", "HoraInicio", "HoraFin", "Aula", LABEL_DOCENTE);
+    }
 
+    private void appendCsvClasses(StringBuilder builder, HorarioActualResponse horario) {
         if (horario == null || horario.clases() == null || horario.clases().isEmpty()) {
-            return builder.toString();
+            return;
         }
-
         for (HorarioClaseResponse clase : horario.clases()) {
-            builder
-                .append(csv(clase.materia()))
-                .append(',')
-                .append(csv(clase.paralelo()))
-                .append(',')
-                .append(csv(clase.dia()))
-                .append(',')
-                .append(csv(clase.horaInicio()))
-                .append(',')
-                .append(csv(clase.horaFin()))
-                .append(',')
-                .append(csv(clase.aula()))
-                .append(',')
-                .append(csv(clase.docente()))
-                .append('\n');
+            appendCsvClass(builder, clase);
         }
+    }
 
-        return builder.toString();
+    private void appendCsvClass(StringBuilder builder, HorarioClaseResponse clase) {
+        builder
+            .append(csv(clase.materia())).append(',')
+            .append(csv(clase.paralelo())).append(',')
+            .append(csv(clase.dia())).append(',')
+            .append(csv(clase.horaInicio())).append(',')
+            .append(csv(clase.horaFin())).append(',')
+            .append(csv(clase.aula())).append(',')
+            .append(csv(clase.docente())).append('\n');
     }
 
     private void appendCsvRow(StringBuilder builder, String... values) {
@@ -265,24 +267,78 @@ public class HorarioRecomendadoService {
 
     @SuppressWarnings ("java:S2093")
     private byte[] toImage(HorarioActualResponse horario) {
-        List<HorarioClaseResponse> clases = horario == null || horario.clases() == null
-            ? List.of()
-            : horario.clases();
+        List<HorarioClaseResponse> clases = getImageClasses(horario);
 
-        final int padding = 28;
-        final int rowHeight = 34;
-        final int headerHeight = 42;
-        final int titleHeight = 54;
-        final int subtitleHeight = 26;
-        final int metadataRowHeight = 30;
-        final int metadataCount = 5;
+        ImageTableData tableData = buildImageTableData(clases);
 
-        int[] columnWidths = new int[] { 320, 95, 125, 110, 110, 130, 180 };
-        String[] headers = new String[] { LABEL_MATERIA, LABEL_PARALELO, "Dia", "Inicio", "Fin", "Aula", LABEL_DOCENTE };
+        BufferedImage image = createImage(tableData, horario);
+
+        return writeImage(image);
+    }
+
+    private List<HorarioClaseResponse> getImageClasses(HorarioActualResponse horario) {
+        if (horario == null || horario.clases() == null) {
+            return List.of();
+        }
+
+        return horario.clases();
+    }
+
+    private BufferedImage createImage(ImageTableData data,HorarioActualResponse horario) {
+        int width = calculateImageWidth(data.columnWidths());
+        int height = calculateImageHeight(data.rows());
+
+        BufferedImage image =
+            new BufferedImage(width,height,BufferedImage.TYPE_INT_RGB);
+
+        Graphics2D graphics = image.createGraphics();
+
+        try {
+            drawImageContent(graphics,data,horario);
+        } finally {
+            graphics.dispose();
+        }
+
+        return image;
+    }
+
+    private byte[] writeImage(BufferedImage image) {
+        try(ByteArrayOutputStream outputStream =
+                new ByteArrayOutputStream()) {
+
+            ImageIO.write(image,"png",outputStream);
+
+            return outputStream.toByteArray();
+
+        } catch(IOException ex) {
+
+            return new byte[0];
+
+        }
+    }
+
+
+
+
+    private ImageTableData buildImageTableData(List<HorarioClaseResponse> clases) {
+        int[] columnWidths = new int[]{320,95,125,110,110,130,180};
+
+        String[] headers = new String[]{
+            LABEL_MATERIA,
+            LABEL_PARALELO,
+            "Dia",
+            "Inicio",
+            "Fin",
+            "Aula",
+            LABEL_DOCENTE
+        };
+
         String[][] rows = new String[clases.size()][headers.length];
 
         for (int i = 0; i < clases.size(); i++) {
+
             HorarioClaseResponse clase = clases.get(i);
+
             rows[i][0] = safeText(clase.materia());
             rows[i][1] = safeText(clase.paralelo());
             rows[i][2] = safeText(clase.dia());
@@ -292,128 +348,173 @@ public class HorarioRecomendadoService {
             rows[i][6] = safeText(clase.docente());
         }
 
+        return new ImageTableData(columnWidths, headers, rows);
+    }
+
+    private int calculateImageWidth(int[] columnWidths) {
         int tableWidth = 0;
+
         for (int width : columnWidths) {
             tableWidth += width;
         }
 
+        return tableWidth + (28 * 2);
+    }
+
+    private int calculateImageHeight(String[][] rows) {
+
+        int padding = 28;
+        int titleHeight = 54;
+        int subtitleHeight = 26;
+        int metadataHeight = 5 * 30;
+        int headerHeight = 42;
+        int rowHeight = 34;
+
         int tableRows = Math.max(rows.length, 1);
-        int tableHeight = headerHeight + (tableRows * rowHeight);
-        int metadataHeight = metadataCount * metadataRowHeight;
-        int width = tableWidth + (padding * 2);
-        int height = padding + titleHeight + subtitleHeight + 14 + metadataHeight + 16 + tableHeight + padding;
 
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-        Graphics2D graphics = image.createGraphics();
-        try {
-            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        return padding
+            + titleHeight
+            + subtitleHeight
+            + 14
+            + metadataHeight
+            + 16
+            + headerHeight
+            + (tableRows * rowHeight)
+            + padding;
+    }
 
-            graphics.setColor(new Color(0xF5, 0xF7, 0xFB));
-            graphics.fillRect(0, 0, width, height);
+    private void drawImageContent(Graphics2D graphics,ImageTableData data,HorarioActualResponse horario) {
 
-            java.awt.Font titleFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.BOLD, 28);
-            java.awt.Font subtitleFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.PLAIN, 15);
-            java.awt.Font metadataLabelFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.BOLD, 13);
-            java.awt.Font metadataValueFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.PLAIN, 13);
-            java.awt.Font headerFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.BOLD, 14);
-            java.awt.Font bodyFont = new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.PLAIN, 13);
+        graphics.setRenderingHint(
+            RenderingHints.KEY_ANTIALIASING,
+            RenderingHints.VALUE_ANTIALIAS_ON
+        );
 
-            int y = padding;
+        graphics.setRenderingHint(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON
+        );
 
-            graphics.setFont(titleFont);
-            graphics.setColor(PDF_TITLE_COLOR);
-            drawText(graphics, TIPO_HORARIO_ACADEMICO, padding, y + 34);
-            y += titleHeight;
+        graphics.setColor(new Color(0xF5,0xF7,0xFB));
+        graphics.fillRect(
+            0,
+            0,
+            calculateImageWidth(data.columnWidths()),
+            calculateImageHeight(data.rows())
+        );
 
-            graphics.setFont(subtitleFont);
-            graphics.setColor(PDF_SUBTITLE_COLOR);
-            drawText(graphics, buildSubtitle(horario), padding, y + 16);
-            y += subtitleHeight + 12;
 
-            String[][] metadata = new String[][] {
-                { LABEL_UNIVERSIDAD, metaValue(horario == null ? null : horario.universidad()) },
-                { LABEL_CARRERA, metaValue(horario == null ? null : horario.carrera()) },
-                { LABEL_MALLA, metaValue(horario == null ? null : horario.malla()) },
-                { LABEL_SEMESTRE_OFERTA, metaValue(horario == null ? null : horario.semestreOferta()) },
-                { LABEL_SEMESTRE_ACTUAL, metaValue(horario == null ? null : horario.semestreActual()) }
-            };
+        java.awt.Font titleFont =
+            new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.BOLD, 28);
 
-            int metadataLabelWidth = 210;
-            for (String[] pair : metadata) {
-                graphics.setColor(PDF_PRIMARY_COLOR);
-                graphics.fillRect(padding, y, metadataLabelWidth, metadataRowHeight);
+        graphics.setFont(titleFont);
+        graphics.setColor(PDF_TITLE_COLOR);
 
-                graphics.setColor(PDF_BODY_COLOR);
-                graphics.fillRect(padding + metadataLabelWidth, y, tableWidth - metadataLabelWidth, metadataRowHeight);
+        drawText(graphics, TIPO_HORARIO_ACADEMICO, 28, 62);
 
-                graphics.setFont(metadataLabelFont);
-                graphics.setColor(Color.WHITE);
-                drawText(graphics, pair[0], padding + 10, y + 19);
 
-                graphics.setFont(metadataValueFont);
-                graphics.setColor(PDF_TEXT_COLOR);
-                drawText(graphics, pair[1], padding + metadataLabelWidth + 10, y + 19);
+        java.awt.Font subtitleFont =
+            new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.PLAIN,15);
 
-                y += metadataRowHeight;
-            }
+        graphics.setFont(subtitleFont);
+        graphics.setColor(PDF_SUBTITLE_COLOR);
 
-            y += 16;
+        drawText(
+            graphics,
+            buildSubtitle(horario),
+            28,
+            100
+        );
 
-            int x = padding;
-            graphics.setFont(headerFont);
-            for (int i = 0; i < headers.length; i++) {
-                int colWidth = columnWidths[i];
-                graphics.setColor(PDF_PRIMARY_COLOR);
-                graphics.fillRect(x, y, colWidth, headerHeight);
-                graphics.setColor(Color.WHITE);
-                drawCenteredText(graphics, headers[i], x, y, colWidth, headerHeight);
-                x += colWidth;
-            }
-            y += headerHeight;
 
-            if (rows.length == 0) {
+        drawTable(
+            graphics,
+            data
+        );
+    }
+
+
+    private void drawTable(Graphics2D graphics,ImageTableData data) {
+        int x = 28;
+        int y = 130;
+        java.awt.Font headerFont =
+            new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.BOLD,14);
+
+        graphics.setFont(headerFont);
+
+
+        for(int i = 0; i < data.headers().length; i++){
+
+            int width = data.columnWidths()[i];
+
+            graphics.setColor(PDF_PRIMARY_COLOR);
+            graphics.fillRect(
+                x,
+                y,
+                width,
+                42
+            );
+
+            graphics.setColor(Color.WHITE);
+
+            drawCenteredText(
+                graphics,
+                data.headers()[i],
+                x,
+                y,
+                width,
+                42
+            );
+
+            x += width;
+        }
+
+
+        y += 42;
+
+
+        java.awt.Font bodyFont =
+            new java.awt.Font(FONT_SANS_SERIF, java.awt.Font.PLAIN,13);
+
+        graphics.setFont(bodyFont);
+
+
+        for(String[] row : data.rows()){
+
+            x = 28;
+
+            for(int i=0;i<row.length;i++){
+
+                int width = data.columnWidths()[i];
+
                 graphics.setColor(PDF_CARD_COLOR);
-                graphics.fillRect(padding, y, tableWidth, rowHeight);
+                graphics.fillRect(
+                    x,
+                    y,
+                    width,
+                    34
+                );
+
+
                 graphics.setColor(PDF_TEXT_COLOR);
-                graphics.setFont(bodyFont);
-                drawText(graphics, "No hay clases disponibles.", padding + 10, y + 21);
-                y += rowHeight;
-            } else {
-                graphics.setFont(bodyFont);
-                for (String[] row : rows) {
-                    x = padding;
-                    for (int i = 0; i < row.length; i++) {
-                        int colWidth = columnWidths[i];
-                        graphics.setColor(PDF_CARD_COLOR);
-                        graphics.fillRect(x, y, colWidth, rowHeight);
-                        graphics.setColor(PDF_TEXT_COLOR);
-                        drawTextWithEllipsis(graphics, row[i], x + 8, y + 21, colWidth - 16);
-                        x += colWidth;
-                    }
-                    y += rowHeight;
-                }
+
+                drawTextWithEllipsis(
+                    graphics,
+                    row[i],
+                    x+8,
+                    y+21,
+                    width-16
+                );
+
+                x += width;
             }
 
-            graphics.setColor(PDF_BODY_COLOR);
-            int borderY = padding + titleHeight + subtitleHeight + 14 + metadataHeight + 16;
-            int totalRowsHeight = headerHeight + (Math.max(rows.length, 1) * rowHeight);
-            x = padding;
-            for (int widthCol : columnWidths) {
-                graphics.drawRect(x, borderY, widthCol, totalRowsHeight);
-                x += widthCol;
-            }
-            graphics.drawRect(padding, borderY, tableWidth, totalRowsHeight);
-
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            ImageIO.write(image, "png", outputStream);
-            return outputStream.toByteArray();
-        } catch (IOException ex) {
-            return new byte[0];
-        } finally {
-            graphics.dispose();
+            y += 34;
         }
     }
+
+
+
 
     private byte[] toPdf(HorarioActualResponse horario) {
 
@@ -656,4 +757,12 @@ public class HorarioRecomendadoService {
         }
         return value.trim();
     }
+
+
+    private record ImageTableData(
+        int[] columnWidths,
+        String[] headers,
+        String[][] rows
+    ) {}
+
 }

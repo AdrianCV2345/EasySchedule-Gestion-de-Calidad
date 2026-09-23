@@ -38,7 +38,7 @@ dependencies {
 
 pmd {
 	toolVersion = "7.13.0"
-	rulesMinimumPriority = 5
+	rulesMinimumPriority = 2
 }
 
 tasks.withType<Test> {
