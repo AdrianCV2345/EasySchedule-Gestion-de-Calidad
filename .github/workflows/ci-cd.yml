@@ -73,8 +73,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Trigger Netlify deploy
-        env:
-          NETLIFY_BUILD_HOOK_URL: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
+        #env:
+         # NETLIFY_BUILD_HOOK_URL: ${{ secrets.NETLIFY_BUILD_HOOK_URL }}
         run: |
           set -euo pipefail
           if [ -z "$NETLIFY_BUILD_HOOK_URL" ]; then
