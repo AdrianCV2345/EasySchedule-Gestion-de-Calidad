@@ -28,6 +28,7 @@ dependencies {
 	implementation("com.github.librepdf:openpdf:1.3.33")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	testImplementation("org.testng:testng:7.10.2")
 	testRuntimeOnly("com.h2database:h2")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	runtimeOnly("org.postgresql:postgresql")
@@ -41,8 +42,28 @@ pmd {
 	rulesMinimumPriority = 2
 }
 
-tasks.withType<Test> {
+val jacocoExclusions = listOf(
+	"**/config/**",
+	"**/EasyScheduleApplication*",
+	"**/backend/EasyScheduleApplication*"
+)
+
+tasks.test {
 	useJUnitPlatform()
+	filter {
+		excludeTestsMatching("*TestNg*")
+	}
+}
+
+tasks.register<Test>("testNg") {
+	description = "Runs unit tests using TestNG suite"
+	group = "verification"
+	testClassesDirs = sourceSets["test"].output.classesDirs
+	classpath = sourceSets["test"].runtimeClasspath
+	useTestNG()
+	filter {
+		includeTestsMatching("*TestNg*")
+	}
 }
 
 tasks.withType<JavaCompile> {
@@ -56,6 +77,11 @@ tasks.jacocoTestReport {
 		html.required.set(true)
 		csv.required.set(false)
 	}
+	classDirectories.setFrom(
+		sourceSets.main.get().output.asFileTree.matching {
+			exclude(jacocoExclusions)
+		}
+	)
 }
 
 tasks.jacocoTestCoverageVerification {
