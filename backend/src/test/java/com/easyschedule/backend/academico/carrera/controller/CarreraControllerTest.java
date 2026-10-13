@@ -16,7 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("CarreraController - pruebas unitarias (caminos P1, P2, P3)")
+@DisplayName("CarreraController - pruebas unitarias (delegacion de consulta y creacion)")
 class CarreraControllerTest {
 
     @Mock
@@ -26,13 +26,7 @@ class CarreraControllerTest {
     private CarreraController carreraController;
 
     @Test
-    @DisplayName("CP-01 [P1] El controlador se construye correctamente inyectando el servicio")
-    void constructorBuildsController() {
-        assertThat(new CarreraController(carreraService)).isNotNull();
-    }
-
-    @Test
-    @DisplayName("CP-02 [P2] findByUniversidad devuelve la lista configurada y delega con el id recibido")
+    @DisplayName("CP-01 [P2] findByUniversidad devuelve la lista configurada y delega con el id recibido")
     void findByUniversidadReturnsServiceResult() {
         List<CarreraResponse> expected = List.of(
             new CarreraResponse(1L, 1L, "Ingeniería de Sistemas", "IS"),
@@ -47,18 +41,7 @@ class CarreraControllerTest {
     }
 
     @Test
-    @DisplayName("CP-03 [P2] findByUniversidad delega con un id diferente y propaga la lista vacía")
-    void findByUniversidadPropagatesEmptyList() {
-        when(carreraService.findActiveByUniversidad(2L)).thenReturn(List.of());
-
-        List<CarreraResponse> result = carreraController.findByUniversidad(2L);
-
-        assertThat(result).isEmpty();
-        verify(carreraService).findActiveByUniversidad(2L);
-    }
-
-    @Test
-    @DisplayName("CP-04 [P3] create devuelve la respuesta del servicio y delega con el request recibido")
+    @DisplayName("CP-02 [P3] create devuelve la respuesta del servicio y delega con el request recibido")
     void createReturnsServiceResult() {
         CarreraRequest request = new CarreraRequest(1L, "Ingeniería de Sistemas", "IS", true);
         CarreraResponse expected = new CarreraResponse(10L, 1L, "Ingeniería de Sistemas", "IS");

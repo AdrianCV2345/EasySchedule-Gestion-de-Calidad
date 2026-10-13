@@ -153,6 +153,30 @@ class CarreraServiceTest {
         verify(carreraRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
+    @Test
+    @DisplayName("CR-09 [P3] createCarrera lanza excepcion si el nombre es nulo")
+    void createCarreraNombreNuloLanzaExcepcion() {
+        CarreraRequest request = new CarreraRequest(3L, null, "IS", true);
+
+        assertThatThrownBy(() -> carreraService.createCarrera(request))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("El nombre de la carrera es requerido");
+
+        verify(carreraRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("CR-10 [P3] createCarrera lanza excepcion si el codigo es nulo")
+    void createCarreraCodigoNuloLanzaExcepcion() {
+        CarreraRequest request = new CarreraRequest(3L, "Ingeniería", null, true);
+
+        assertThatThrownBy(() -> carreraService.createCarrera(request))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("El codigo de la carrera es requerido");
+
+        verify(carreraRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
     private Carrera carrera(Long id, Long universidadId, String nombre, String codigo, boolean active) {
         Carrera carrera = new Carrera();
         carrera.setId(id);
