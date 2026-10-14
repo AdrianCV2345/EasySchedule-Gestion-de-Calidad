@@ -5,11 +5,16 @@ import jakarta.validation.ConstraintValidatorContext;
 
 public class PasswordPolicyValidator implements ConstraintValidator<PasswordPolicy, String> {
     private static final int MIN_LENGTH = 8;
+    private static final int MAX_LENGTH = 120;
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
         if (value == null || value.isBlank()) {
-            return true;
+            return false;
+        }
+
+        if (value.length() < MIN_LENGTH || value.length() > MAX_LENGTH) {
+            return false;
         }
 
         boolean hasUppercase = value.chars().anyMatch(Character::isUpperCase);
@@ -17,8 +22,7 @@ public class PasswordPolicyValidator implements ConstraintValidator<PasswordPoli
         boolean hasDigit = value.chars().anyMatch(Character::isDigit);
         boolean hasSpecial = value.chars().anyMatch(ch -> !Character.isLetterOrDigit(ch));
 
-        return value.length() >= MIN_LENGTH
-            && hasUppercase
+        return hasUppercase
             && hasLowercase
             && hasDigit
             && hasSpecial;
