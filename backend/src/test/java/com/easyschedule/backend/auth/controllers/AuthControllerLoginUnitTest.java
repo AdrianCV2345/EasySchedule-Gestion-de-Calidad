@@ -38,4 +38,18 @@ class AuthControllerLoginUnitTest {
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         verify(authService).login(request);
     }
+
+    @Test
+    void loginHandlesNonNullIdentifierAndDelegatesToService() {
+        LoginRequest request = new LoginRequest();
+        request.setIdentifier(" user ");
+
+        ResponseEntity<Object> expectedResponse = ResponseEntity.ok().build();
+        when(authService.login(request)).thenReturn(expectedResponse);
+
+        ResponseEntity<Object> response = authController.login(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(authService).login(request);
+    }
 }
