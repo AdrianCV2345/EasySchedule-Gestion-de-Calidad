@@ -94,7 +94,7 @@ public class AuthService {
                     .body(CREDENCIALES_INCORRECTAS_MESSAGE);
         }
 
-        if (!encoder.matches(request.getPassword(), user.getPasswordHash())) {
+        if (!passwordMatches(request.getPassword(), user.getPasswordHash())) {
             log.warn("[AUTH_LOGIN] fallo autenticacion | userId={} motivo=password_incorrecta", user.getId());
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
@@ -114,6 +114,15 @@ public class AuthService {
                 MESSAGE_KEY, "Login exitoso"
             )
         );
+    }
+
+    private boolean passwordMatches(String rawPassword, String passwordHash) {
+        try {
+            return encoder.matches(rawPassword, passwordHash);
+        } catch (IllegalArgumentException exception) {
+            log.warn("[AUTH_LOGIN] fallo autenticacion | motivo=hash_invalido");
+            return false;
+        }
     }
 
     public ResponseEntity<Object> loginWithGoogle(GoogleLoginRequest request) {
