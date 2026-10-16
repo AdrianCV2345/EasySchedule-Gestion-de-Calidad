@@ -3,6 +3,7 @@ package com.easyschedule.backend.auth.service;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,12 +18,17 @@ public class GoogleTokenVerifierService {
 
     private static final Logger log = LoggerFactory.getLogger(GoogleTokenVerifierService.class);
     private static final String GOOGLE_TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo";
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final RestTemplate restTemplate;
     private final String clientId;
 
     public GoogleTokenVerifierService(@Value("${app.google.client-id}") String clientId) {
-        this.restTemplate = new RestTemplate();
+        this(new RestTemplate(), clientId);
+    }
+
+    GoogleTokenVerifierService(RestTemplate restTemplate, String clientId) {
+        this.restTemplate = restTemplate;
         this.clientId = clientId;
     }
 
@@ -92,14 +98,20 @@ public class GoogleTokenVerifierService {
             return null;
         }
 
-        if ("false".equalsIgnoreCase(emailVerified)) {
+        if (!"true".equalsIgnoreCase(emailVerified)) {
             log.warn("[AUTH_GOOGLE] email no verificado por Google");
+            return null;
+        }
+
+        String normalizedEmail = email.trim();
+        if (!EMAIL_PATTERN.matcher(normalizedEmail).matches()) {
+            log.warn("[AUTH_GOOGLE] email invalido");
             return null;
         }
 
         return new GoogleUserInfo(
                 googleId,
-                email.trim().toLowerCase(),
+            normalizedEmail.toLowerCase(),
                 name
         );
     }
