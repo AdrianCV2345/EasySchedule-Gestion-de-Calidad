@@ -21,6 +21,9 @@ public class MallaFileParserService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private static final List<String> EXPECTED_HEADERS =
+        List.of("codigo", "nombre", "semestre", "creditos");
+
     public MallaImportRequest parseFile(MultipartFile file) {
         String filename = file.getOriginalFilename();
         if (filename == null) {
@@ -55,9 +58,9 @@ public class MallaFileParserService {
         logger.info("Parsing CSV file: {}, size={} bytes", file.getOriginalFilename(), file.getSize());
 
         try (BufferedReader reader = openReader(file)) {
-            List<String> lines = readCsvLines(reader);
+            List<CsvLine> lines = readCsvLines(reader);
             validateHasHeader(lines);
-            validateCsvHeaders(lines.get(0).split(",", -1));
+            validateCsvHeaders(lines.get(0).content().split(",", -1));
             ParsedCsv parsedCsv = parseCsvRows(lines);
             validateParsedCsv(parsedCsv);
             return new MallaImportRequest("Malla Importada", "1.0", null, parsedCsv.materias());
@@ -72,12 +75,14 @@ public class MallaFileParserService {
         return new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
     }
 
-    private List<String> readCsvLines(BufferedReader reader) throws java.io.IOException {
-        List<String> lines = new ArrayList<>();
+    private List<CsvLine> readCsvLines(BufferedReader reader) throws java.io.IOException {
+        List<CsvLine> lines = new ArrayList<>();
         String line;
+        int physicalLine = 0;
         while ((line = reader.readLine()) != null) {
+            physicalLine++;
             if (line.trim().isEmpty()) continue;
-            lines.add(normalizeCsvLine(line, lines.size() + 1));
+            lines.add(new CsvLine(physicalLine, normalizeCsvLine(line, physicalLine)));
         }
         return lines;
     }
@@ -93,17 +98,18 @@ public class MallaFileParserService {
         return line;
     }
 
-    private void validateHasHeader(List<String> lines) {
+    private void validateHasHeader(List<CsvLine> lines) {
         if (lines.isEmpty()) {
             throw new IllegalArgumentException("El CSV no contiene datos");
         }
     }
 
-    private ParsedCsv parseCsvRows(List<String> lines) {
+    private ParsedCsv parseCsvRows(List<CsvLine> lines) {
         List<MateriaImportRequest> materias = new ArrayList<>();
         List<String> errors = new ArrayList<>();
         for (int index = 1; index < lines.size(); index++) {
-            parseCsvRow(lines.get(index), index + 1, materias, errors);
+            CsvLine csvLine = lines.get(index);
+            parseCsvRow(csvLine.content(), csvLine.number(), materias, errors);
         }
         return new ParsedCsv(materias, errors);
     }
@@ -155,7 +161,16 @@ public class MallaFileParserService {
         if (headers.length < 4) {
             throw new IllegalArgumentException("El CSV debe tener al menos: codigo,nombre,semestre,creditos");
         }
+        for (int index = 0; index < EXPECTED_HEADERS.size(); index++) {
+            String actual = headers[index].trim().toLowerCase();
+            if (!EXPECTED_HEADERS.get(index).equals(actual)) {
+                throw new IllegalArgumentException(
+                    "Encabezados inválidos. Se esperaba: codigo,nombre,semestre,creditos");
+            }
+        }
     }
+
+    private record CsvLine(int number, String content) {}
 
     private record ParsedCsv(List<MateriaImportRequest> materias, List<String> errors) {}
 

@@ -114,10 +114,6 @@ public class EstudianteController {
     }
 
     private void validateProfileOwnership(String username, Long userId) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesión inválida");
-        }
-
         if (!estudianteService.canAccessProfile(username, userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permisos para acceder a este perfil");
         }
