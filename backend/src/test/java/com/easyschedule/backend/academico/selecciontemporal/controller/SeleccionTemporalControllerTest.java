@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.easyschedule.backend.academico.selecciontemporal.service.SeleccionTemporalService;
@@ -77,5 +78,15 @@ class SeleccionTemporalControllerTest {
         assertThat(excepcion.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(excepcion.getReason()).isEqualTo("Sesión inválida");
         verify(seleccionService, never()).clearSelections(any());
+    }
+
+    @Test
+    @DisplayName("ST35-01 principal con nombre 7 y ofertaMateriaId 42: delega removeSelection(7L, 42L) una vez sin excepciones")
+    void removeSelectionDelegaUserIdYOferta() {
+        Principal principal = principalConNombre("7");
+
+        assertDoesNotThrow(() -> controller.removeSelection(principal, 42L));
+
+        verify(seleccionService, times(1)).removeSelection(7L, 42L);
     }
 }
