@@ -1,10 +1,14 @@
 package com.easyschedule.backend.estudiante.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,6 +18,7 @@ import com.easyschedule.backend.auth.models.User;
 import com.easyschedule.backend.auth.repositories.UserRepository;
 import com.easyschedule.backend.auth.service.AuthService;
 import com.easyschedule.backend.estudiante.dto.EstudianteResponse;
+import com.easyschedule.backend.estudiante.dto.PerfilUpdateRequest;
 import com.easyschedule.backend.estudiante.model.Estudiante;
 import com.easyschedule.backend.estudiante.repository.EstudianteRepository;
 import com.easyschedule.backend.shared.exception.ResourceNotFoundException;
@@ -27,6 +32,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("EstudianteService - pruebas unitarias (HU15: consulta y control de acceso al perfil)")
@@ -246,5 +253,381 @@ class EstudianteServiceTest {
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.username()).isEqualTo("juan");
         verify(estudianteRepository).findByUsernameIgnoreCase("juan");
+    }
+
+    private User user7() {
+        return usuario(7L, "estudiante7", "est7@correo.com");
+    }
+
+    private Estudiante estudiante7Completo(User user) {
+        Estudiante estudiante = estudiante(7L, user);
+        estudiante.setNombre("Carlos");
+        estudiante.setApellido("Quispe");
+        estudiante.setCarnetIdentidad("7654321");
+        estudiante.setFechaNacimiento(LocalDate.of(2000, 1, 1));
+        return estudiante;
+    }
+
+    private void stubGetOrCreateSincronizado(User user, Estudiante estudiante) {
+        when(userRepository.findByUsernameIgnoreCase("estudiante7")).thenReturn(Optional.of(user));
+        when(estudianteRepository.findById(7L)).thenReturn(Optional.of(estudiante));
+    }
+
+    private PerfilUpdateRequest perfil(String username, String nombre, String apellido,
+            String email, String carnet, LocalDate fecha) {
+        return new PerfilUpdateRequest(username, nombre, apellido, email, carnet, fecha, null, null);
+    }
+
+    private void stubSaveEstudiante() {
+        when(estudianteRepository.save(any(Estudiante.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    @Test
+    @DisplayName("HU16-03 datos validos con normalizacion: perfil completo y guarda User y Estudiante")
+    void updateProfileNormalizaDatosYMarcaPerfilCompleto() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(estudianteRepository.existsByCarnetIdentidadIgnoreCase("7654321 LP")).thenReturn(false);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("estudiante7", "  mARIA   lOS ANGELES ",
+                " qUISPE  mamani ", " EST7@CORREO.COM ", " 7654321 lp ", LocalDate.of(1999, 5, 20));
+
+        EstudianteResponse response = estudianteService.updateProfile("estudiante7", request);
+
+        assertEquals("Maria Los Angeles", estudiante.getNombre());
+        assertEquals("Quispe Mamani", estudiante.getApellido());
+        assertEquals("est7@correo.com", user.getEmail());
+        assertEquals("est7@correo.com", estudiante.getCorreo());
+        assertEquals("7654321 LP", estudiante.getCarnetIdentidad());
+        assertEquals(LocalDate.of(1999, 5, 20), estudiante.getFechaNacimiento());
+        assertThat(estudiante.isProfileCompleted()).isTrue();
+        verify(userRepository).save(user);
+        verify(estudianteRepository).save(estudiante);
+        assertEquals("Maria Los Angeles", response.nombre());
+        assertEquals("7654321 LP", response.carnetIdentidad());
+        assertThat(response.profileCompleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("HU16-04 username correo y CI sin cambios: omite consultas de duplicados y guarda")
+    void updateProfileSinCambiosDeIdentidadOmiteConsultasDeDuplicados() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("estudiante7", "carlos", "quispe",
+                "est7@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        EstudianteResponse response = estudianteService.updateProfile("estudiante7", request);
+
+        assertEquals("Carlos", estudiante.getNombre());
+        assertEquals("Quispe", estudiante.getApellido());
+        assertThat(estudiante.isProfileCompleted()).isTrue();
+        verify(userRepository, never()).existsByUsernameIgnoreCase(anyString());
+        verify(userRepository, never()).existsByEmailIgnoreCase(anyString());
+        verify(estudianteRepository, never()).existsByUsernameIgnoreCase(anyString());
+        verify(estudianteRepository, never()).existsByCorreoIgnoreCase(anyString());
+        verify(estudianteRepository, never()).existsByCarnetIdentidadIgnoreCase(anyString());
+        verify(userRepository).save(user);
+        verify(estudianteRepository).save(estudiante);
+        assertEquals("estudiante7", response.username());
+    }
+
+    @Test
+    @DisplayName("HU16-05 nuevo username existente en UserRepository: HTTP 409 sin guardado final")
+    void updateProfileUsernameDuplicadoEnUserRepoConflict() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(userRepository.existsByUsernameIgnoreCase("nuevoUsuario")).thenReturn(true);
+
+        PerfilUpdateRequest request = perfil("nuevoUsuario", "Carlos", "Quispe",
+                "est7@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> estudianteService.updateProfile("estudiante7", request));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals("Error: El nombre de usuario ya está en uso", ex.getReason());
+        verify(userRepository, never()).save(any(User.class));
+        verify(estudianteRepository, never()).save(any(Estudiante.class));
+    }
+
+    @Test
+    @DisplayName("HU16-06 username disponible en UserRepo pero existente en EstudianteRepository: HTTP 409")
+    void updateProfileUsernameDuplicadoEnEstudianteRepoConflict() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(userRepository.existsByUsernameIgnoreCase("nuevoUsuario")).thenReturn(false);
+        when(estudianteRepository.existsByUsernameIgnoreCase("nuevoUsuario")).thenReturn(true);
+
+        PerfilUpdateRequest request = perfil("nuevoUsuario", "Carlos", "Quispe",
+                "est7@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> estudianteService.updateProfile("estudiante7", request));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(userRepository, never()).save(any(User.class));
+        verify(estudianteRepository, never()).save(any(Estudiante.class));
+    }
+
+    @Test
+    @DisplayName("HU16-07 nuevo correo existente en UserRepository: HTTP 409 sin guardado final")
+    void updateProfileEmailDuplicadoEnUserRepoConflict() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(userRepository.existsByEmailIgnoreCase("nuevo@correo.com")).thenReturn(true);
+
+        PerfilUpdateRequest request = perfil("estudiante7", "Carlos", "Quispe",
+                "nuevo@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> estudianteService.updateProfile("estudiante7", request));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals("Error: El correo electrónico ya está registrado", ex.getReason());
+        verify(userRepository, never()).save(any(User.class));
+        verify(estudianteRepository, never()).save(any(Estudiante.class));
+    }
+
+    @Test
+    @DisplayName("HU16-08 correo disponible en UserRepo pero existente en EstudianteRepository: HTTP 409")
+    void updateProfileEmailDuplicadoEnEstudianteRepoConflict() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(userRepository.existsByEmailIgnoreCase("nuevo@correo.com")).thenReturn(false);
+        when(estudianteRepository.existsByCorreoIgnoreCase("nuevo@correo.com")).thenReturn(true);
+
+        PerfilUpdateRequest request = perfil("estudiante7", "Carlos", "Quispe",
+                "nuevo@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> estudianteService.updateProfile("estudiante7", request));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(userRepository, never()).save(any(User.class));
+        verify(estudianteRepository, never()).save(any(Estudiante.class));
+    }
+
+    @Test
+    @DisplayName("HU16-09 CI anterior null y nuevo CI registrado en otro estudiante: HTTP 409")
+    void updateProfileCarnetDuplicadoConAnteriorNullConflict() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        estudiante.setCarnetIdentidad(null);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(estudianteRepository.existsByCarnetIdentidadIgnoreCase("7654321 LP")).thenReturn(true);
+
+        PerfilUpdateRequest request = perfil("estudiante7", "Carlos", "Quispe",
+                "est7@correo.com", "7654321 LP", LocalDate.of(2000, 1, 1));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> estudianteService.updateProfile("estudiante7", request));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals("Error: El carnet de identidad ya está en uso", ex.getReason());
+        verify(userRepository, never()).save(any(User.class));
+        verify(estudianteRepository, never()).save(any(Estudiante.class));
+    }
+
+    @Test
+    @DisplayName("HU16-10 identificador de usuario inexistente: ResourceNotFoundException sin guardado")
+    void updateProfileUsuarioInexistenteLanzaResourceNotFound() {
+        when(userRepository.findByUsernameIgnoreCase("fantasma")).thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("fantasma")).thenReturn(Optional.empty());
+
+        PerfilUpdateRequest request = perfil("fantasma", "Carlos", "Quispe",
+                "nuevo@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> estudianteService.updateProfile("fantasma", request));
+
+        verify(userRepository, never()).save(any(User.class));
+        verify(estudianteRepository, never()).save(any(Estudiante.class));
+    }
+
+    @Test
+    @DisplayName("HU16-11 nombre null: perfil incompleto y nombre null")
+    void updateProfileNombreNullPerfilIncompleto() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("estudiante7", null, "Quispe",
+                "est7@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        estudianteService.updateProfile("estudiante7", request);
+
+        assertNull(estudiante.getNombre());
+        assertFalse(estudiante.isProfileCompleted());
+    }
+
+    @Test
+    @DisplayName("HU16-12 nombre en blanco: normalizado a vacio y perfil incompleto")
+    void updateProfileNombreEnBlancoPerfilIncompleto() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("estudiante7", "   ", "Quispe",
+                "est7@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        estudianteService.updateProfile("estudiante7", request);
+
+        assertEquals("", estudiante.getNombre());
+        assertFalse(estudiante.isProfileCompleted());
+    }
+
+    @Test
+    @DisplayName("HU16-13 apellido null: perfil incompleto")
+    void updateProfileApellidoNullPerfilIncompleto() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("estudiante7", "Carlos", null,
+                "est7@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        estudianteService.updateProfile("estudiante7", request);
+
+        assertNull(estudiante.getApellido());
+        assertFalse(estudiante.isProfileCompleted());
+    }
+
+    @Test
+    @DisplayName("HU16-14 apellido en blanco: normalizado a vacio y perfil incompleto")
+    void updateProfileApellidoEnBlancoPerfilIncompleto() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("estudiante7", "Carlos", "   ",
+                "est7@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        estudianteService.updateProfile("estudiante7", request);
+
+        assertEquals("", estudiante.getApellido());
+        assertFalse(estudiante.isProfileCompleted());
+    }
+
+    @Test
+    @DisplayName("HU16-15 username en blanco: normalizado a vacio y perfil incompleto")
+    void updateProfileUsernameEnBlancoPerfilIncompleto() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(userRepository.existsByUsernameIgnoreCase("")).thenReturn(false);
+        when(estudianteRepository.existsByUsernameIgnoreCase("")).thenReturn(false);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("   ", "Carlos", "Quispe",
+                "est7@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        estudianteService.updateProfile("estudiante7", request);
+
+        assertEquals("", user.getUsername());
+        assertEquals("", estudiante.getUsername());
+        assertFalse(estudiante.isProfileCompleted());
+    }
+
+    @Test
+    @DisplayName("HU16-16 correo en blanco: normalizado a vacio y perfil incompleto")
+    void updateProfileEmailEnBlancoPerfilIncompleto() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(userRepository.existsByEmailIgnoreCase("")).thenReturn(false);
+        when(estudianteRepository.existsByCorreoIgnoreCase("")).thenReturn(false);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("estudiante7", "Carlos", "Quispe",
+                "   ", "7654321", LocalDate.of(2000, 1, 1));
+
+        estudianteService.updateProfile("estudiante7", request);
+
+        assertEquals("", user.getEmail());
+        assertEquals("", estudiante.getCorreo());
+        assertFalse(estudiante.isProfileCompleted());
+    }
+
+    @Test
+    @DisplayName("HU16-17 carnet null: CI null y perfil incompleto")
+    void updateProfileCarnetNullPerfilIncompleto() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(estudianteRepository.existsByCarnetIdentidadIgnoreCase(null)).thenReturn(false);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("estudiante7", "Carlos", "Quispe",
+                "est7@correo.com", null, LocalDate.of(2000, 1, 1));
+
+        estudianteService.updateProfile("estudiante7", request);
+
+        assertNull(estudiante.getCarnetIdentidad());
+        assertFalse(estudiante.isProfileCompleted());
+    }
+
+    @Test
+    @DisplayName("HU16-18 carnet en blanco: normalizado a vacio y perfil incompleto")
+    void updateProfileCarnetEnBlancoPerfilIncompleto() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(estudianteRepository.existsByCarnetIdentidadIgnoreCase("")).thenReturn(false);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("estudiante7", "Carlos", "Quispe",
+                "est7@correo.com", "   ", LocalDate.of(2000, 1, 1));
+
+        estudianteService.updateProfile("estudiante7", request);
+
+        assertEquals("", estudiante.getCarnetIdentidad());
+        assertFalse(estudiante.isProfileCompleted());
+    }
+
+    @Test
+    @DisplayName("HU16-19 fechaNacimiento null: perfil incompleto")
+    void updateProfileFechaNacimientoNullPerfilIncompleto() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        stubSaveEstudiante();
+
+        PerfilUpdateRequest request = perfil("estudiante7", "Carlos", "Quispe",
+                "est7@correo.com", "7654321", null);
+
+        estudianteService.updateProfile("estudiante7", request);
+
+        assertNull(estudiante.getFechaNacimiento());
+        assertFalse(estudiante.isProfileCompleted());
+    }
+
+    @Test
+    @DisplayName("HU16-20 userRepository.save lanza IllegalStateException: se propaga y no guarda Estudiante")
+    void updateProfileFalloDePersistenciaUserSePropaga() {
+        User user = user7();
+        Estudiante estudiante = estudiante7Completo(user);
+        stubGetOrCreateSincronizado(user, estudiante);
+        when(userRepository.save(any(User.class))).thenThrow(new IllegalStateException("fallo de persistencia"));
+
+        PerfilUpdateRequest request = perfil("estudiante7", "Carlos", "Quispe",
+                "est7@correo.com", "7654321", LocalDate.of(2000, 1, 1));
+
+        assertThrows(IllegalStateException.class,
+                () -> estudianteService.updateProfile("estudiante7", request));
+
+        verify(estudianteRepository, never()).save(any(Estudiante.class));
     }
 }
