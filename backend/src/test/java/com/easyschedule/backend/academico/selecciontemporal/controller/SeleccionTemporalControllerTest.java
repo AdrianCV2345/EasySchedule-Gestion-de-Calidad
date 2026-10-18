@@ -89,4 +89,24 @@ class SeleccionTemporalControllerTest {
 
         verify(seleccionService, times(1)).removeSelection(7L, 42L);
     }
+
+    @Test
+    @DisplayName("ST34-01 delegacion del controller: invoca addSelection(7L, request) y retorna la respuesta del servicio")
+    void addSelectionDelegaYRetornaRespuesta() {
+        Principal principal = principalConNombre("7");
+        com.easyschedule.backend.academico.selecciontemporal.dto.SeleccionTemporalRequest request =
+            new com.easyschedule.backend.academico.selecciontemporal.dto.SeleccionTemporalRequest();
+        request.setOfertaMateriaId(42L);
+        com.easyschedule.backend.academico.selecciontemporal.dto.SeleccionTemporalResponse esperado =
+            new com.easyschedule.backend.academico.selecciontemporal.dto.SeleccionTemporalResponse();
+
+        org.mockito.Mockito.when(seleccionService.addSelection(org.mockito.Mockito.eq(7L), org.mockito.Mockito.any()))
+            .thenReturn(esperado);
+
+        com.easyschedule.backend.academico.selecciontemporal.dto.SeleccionTemporalResponse resultado =
+            controller.addSelection(principal, request);
+
+        assertThat(resultado).isSameAs(esperado);
+        verify(seleccionService, times(1)).addSelection(org.mockito.Mockito.eq(7L), org.mockito.Mockito.any());
+    }
 }
