@@ -3,8 +3,10 @@ package com.easyschedule.backend.academico.estado_materia.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -167,6 +169,26 @@ class EstadoMateriaRegisterUnitTest {
     }
 
     @Test
+    void givenEmptyBatch_whenSaveEstados_thenReturnsEmptyListAndDoesNotInvokeSaveEstado() {
+        List<EstadoMateriaResponse> result = service.saveEstados(7L, List.of());
+
+        assertTrue(result.isEmpty());
+        verify(selfService, never()).saveEstado(any(), any());
+    }
+
+    @Test
+    void givenNullStateInBatch_whenSaveEstados_thenInvokesSaveEstadoForNullState() {
+        EstadoMateriaRequest nullState = new EstadoMateriaRequest(10L, null);
+        EstadoMateriaResponse expected = new EstadoMateriaResponse(21L, 7L, 10L, null, OffsetDateTime.now());
+        when(selfService.saveEstado(7L, nullState)).thenReturn(expected);
+
+        List<EstadoMateriaResponse> result = service.saveEstados(7L, List.of(nullState));
+
+        assertEquals(List.of(expected), result);
+        verify(selfService, times(1)).saveEstado(7L, nullState);
+    }
+
+    @Test
     void givenBatchWithCursandoAndAllowedStates_whenSaveEstados_thenFiltersCursandoAndUsesProxy() {
         EstadoMateriaRequest cursando = new EstadoMateriaRequest(10L, "cursando");
         EstadoMateriaRequest pendiente = new EstadoMateriaRequest(11L, "pendiente");
@@ -178,6 +200,22 @@ class EstadoMateriaRegisterUnitTest {
         assertEquals(List.of(expected), result);
         verify(selfService).saveEstado(7L, pendiente);
         verify(selfService, never()).saveEstado(7L, cursando);
+    }
+
+    @Test
+    void givenSavedStateNotFound_whenSaveEstado_thenThrowsRuntimeException() {
+        EstadoMateriaRequest request = new EstadoMateriaRequest(10L, "pendiente");
+        when(estadoMateriaRepository.findByUserIdAndMallaMateria_Id(7L, 10L))
+            .thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(
+            RuntimeException.class,
+            () -> service.saveEstado(7L, request)
+        );
+
+        assertEquals("Estado no guardado", exception.getMessage());
+        verify(estadoMateriaRepository).upsertEstado(7L, 10L, "pendiente");
+        verify(estadoMateriaRepository).findByUserIdAndMallaMateria_Id(7L, 10L);
     }
 
     private EstadoMateria savedState(String state, MallaMateria matter) {
