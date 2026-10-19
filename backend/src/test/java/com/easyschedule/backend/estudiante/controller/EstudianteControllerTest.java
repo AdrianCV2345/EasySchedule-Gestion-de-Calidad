@@ -1,6 +1,8 @@
 package com.easyschedule.backend.estudiante.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -9,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.easyschedule.backend.estudiante.dto.AvanceGraduacionExport;
 import com.easyschedule.backend.estudiante.dto.EstudianteResponse;
 import com.easyschedule.backend.estudiante.dto.PerfilUpdateRequest;
 import com.easyschedule.backend.estudiante.service.EstudianteMallaExportService;
@@ -16,13 +19,17 @@ import com.easyschedule.backend.estudiante.service.EstudianteService;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
@@ -146,5 +153,63 @@ class EstudianteControllerTest {
         assertThat(excepcion.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         verify(estudianteService).canAccessProfile("juan", 1L);
         verify(estudianteService, never()).updateProfile(anyString(), any());
+    }
+
+    // ==================================================================
+    // HU#17 - Exportación del avance de graduación en PDF
+    // ==================================================================
+
+    @Test
+    @DisplayName("HU17-01 principal válido: delega en el servicio y devuelve 200 con el PDF")
+    void exportarAvanceGraduacionConPrincipalValidoDevuelvePdf() {
+        Principal principal = principalConNombre("7");
+        byte[] pdfBytes = "%PDF-1.4 contenido simulado".getBytes();
+        AvanceGraduacionExport export = new AvanceGraduacionExport(
+            pdfBytes, "application/pdf", "avance_graduacion.pdf");
+        when(exportService.exportarAvanceGraduacion(7L, "pdf")).thenReturn(export);
+
+        ResponseEntity<byte[]> respuesta = controller.exportarAvanceGraduacion(principal);
+
+        assertEquals(200, respuesta.getStatusCodeValue());
+        assertArrayEquals(pdfBytes, respuesta.getBody());
+        assertEquals(MediaType.APPLICATION_PDF, respuesta.getHeaders().getContentType());
+        assertEquals("attachment; filename=\"avance_graduacion.pdf\"",
+            respuesta.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION));
+        verify(exportService).exportarAvanceGraduacion(7L, "pdf");
+    }
+
+    @Test
+    @DisplayName("HU17-02 principal null: responde 401 y no invoca al servicio de exportación")
+    void exportarAvanceGraduacionConPrincipalNullRechaza() {
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+            () -> controller.exportarAvanceGraduacion(null));
+
+        assertThat(excepcion.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(excepcion.getReason()).isEqualTo("Sesión inválida");
+        verifyNoInteractions(exportService);
+    }
+
+    @Test
+    @DisplayName("HU17-03 principal con getName null: responde 401")
+    void exportarAvanceGraduacionConNombreNullRechaza() {
+        Principal principal = principalConNombre(null);
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+            () -> controller.exportarAvanceGraduacion(principal));
+
+        assertThat(excepcion.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        verifyNoInteractions(exportService);
+    }
+
+    @Test
+    @DisplayName("HU17-04 principal con nombre no numérico: responde 401")
+    void exportarAvanceGraduacionConNombreNoNumericoRechaza() {
+        Principal principal = principalConNombre("usuario-invalido");
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class,
+            () -> controller.exportarAvanceGraduacion(principal));
+
+        assertThat(excepcion.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        verifyNoInteractions(exportService);
     }
 }
