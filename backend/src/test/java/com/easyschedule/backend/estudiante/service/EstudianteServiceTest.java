@@ -630,4 +630,72 @@ class EstudianteServiceTest {
 
         verify(estudianteRepository, never()).save(any(Estudiante.class));
     }
+
+    // ==================================================================
+    // HU#18 — Marcar tour de bienvenida como completado
+    // ==================================================================
+
+    @Test
+    @DisplayName("HU18-01 estudiante existente: marca tour como completado y lo persiste")
+    void completeTourEstudianteExistenteMarcaTourCompletado() {
+        User user = usuario(1L, "juan", "juan@correo.com");
+        Estudiante existente = estudiante(1L, user);
+        existente.setTourCompleted(false);
+        when(userRepository.findByUsernameIgnoreCase("juan")).thenReturn(Optional.of(user));
+        when(estudianteRepository.findById(1L)).thenReturn(Optional.of(existente));
+        when(estudianteRepository.save(any(Estudiante.class))).thenAnswer(invocation -> {
+            Estudiante guardado = invocation.getArgument(0);
+            guardado.setId(1L);
+            return guardado;
+        });
+
+        EstudianteResponse response = estudianteService.completeTour("juan");
+
+        assertThat(response.tourCompleted()).isTrue();
+        assertThat(response.id()).isEqualTo(1L);
+
+        ArgumentCaptor<Estudiante> captor = ArgumentCaptor.forClass(Estudiante.class);
+        verify(estudianteRepository).save(captor.capture());
+        Estudiante guardado = captor.getValue();
+        assertThat(guardado.isTourCompleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("HU18-02 usuario inexistente: lanza ResourceNotFoundException")
+    void completeTourUsuarioInexistenteLanzaExcepcion() {
+        when(userRepository.findByUsernameIgnoreCase("fantasma")).thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("fantasma")).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+            () -> estudianteService.completeTour("fantasma"));
+
+        verify(userRepository).findByUsernameIgnoreCase("fantasma");
+        verify(userRepository).findByEmailIgnoreCase("fantasma");
+        verify(estudianteRepository, never()).save(any(Estudiante.class));
+    }
+
+    @Test
+    @DisplayName("HU18-03 perfil inexistente: crea nuevo estudiante y marca tour completado")
+    void completeTourPerfilInexistenteCreaYMarcaTour() {
+        User user = usuario(1L, "nuevo", "nuevo@correo.com");
+        when(userRepository.findByUsernameIgnoreCase("nuevo")).thenReturn(Optional.of(user));
+        when(estudianteRepository.findById(1L)).thenReturn(Optional.empty());
+        when(estudianteRepository.save(any(Estudiante.class))).thenAnswer(invocation -> {
+            Estudiante creado = invocation.getArgument(0);
+            creado.setId(1L);
+            return creado;
+        });
+
+        EstudianteResponse response = estudianteService.completeTour("nuevo");
+
+        assertThat(response.tourCompleted()).isTrue();
+        assertThat(response.id()).isEqualTo(1L);
+
+        ArgumentCaptor<Estudiante> captor = ArgumentCaptor.forClass(Estudiante.class);
+        verify(estudianteRepository, times(2)).save(captor.capture());
+        Estudiante guardado = captor.getValue();
+        assertThat(guardado.isTourCompleted()).isTrue();
+        assertThat(guardado.getUsername()).isEqualTo("nuevo");
+        assertThat(guardado.getCorreo()).isEqualTo("nuevo@correo.com");
+    }
 }
