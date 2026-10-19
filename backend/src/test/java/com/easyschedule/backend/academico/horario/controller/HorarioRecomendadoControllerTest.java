@@ -8,10 +8,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.easyschedule.backend.academico.horario.dto.HorarioActualResponse;
 import com.easyschedule.backend.academico.horario.service.HorarioRecomendadoService;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * HU#45 — Pruebas unitarias de exportHorarioActual (HX45-01 a HX45-08).
+ * HU#44 — Pruebas unitarias de getHorarioActual() (HU44-01 a HU44-04).
  * Caja blanca pura: sin MockMvc ni contexto Spring.
  */
 @ExtendWith(MockitoExtension.class)
@@ -175,5 +178,62 @@ class HorarioRecomendadoControllerTest {
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         verify(horarioRecomendadoService).hasHorarioActual(7L);
         verifyNoGeneratorCalled();
+    }
+
+    // ==================================================================
+    // HU#44 — Consultar horario actual: getHorarioActual()
+    // ==================================================================
+
+    @Test
+    @DisplayName("HU44-01: principal valido -> delega al servicio con el userId correcto")
+    void hu44_01_principalValidoDelegaservicio() {
+        HorarioActualResponse esperado = new HorarioActualResponse(
+            "UTB", "Sistemas", "Ingenieria", "3", (short) 3, List.of()
+        );
+        when(horarioRecomendadoService.getHorarioActualByUserId(7L)).thenReturn(esperado);
+
+        HorarioActualResponse resultado = controller.getHorarioActual(principal("7"));
+
+        assertEquals(esperado, resultado);
+        verify(horarioRecomendadoService).getHorarioActualByUserId(7L);
+    }
+
+    @Test
+    @DisplayName("HU44-02: principal nulo -> 401 Sesion invalida")
+    void hu44_02_principalNulo() {
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> controller.getHorarioActual((Principal) null));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+        assertEquals("Sesion invalida", ex.getReason());
+        verifyNoInteractions(horarioRecomendadoService);
+    }
+
+    @Test
+    @DisplayName("HU44-03: principal con nombre nulo -> 401 Sesion invalida")
+    void hu44_03_nombreNulo() {
+        Principal principalNuloNombre = () -> null;
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> controller.getHorarioActual(principalNuloNombre));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+        assertEquals("Sesion invalida", ex.getReason());
+        verifyNoInteractions(horarioRecomendadoService);
+    }
+
+    @Test
+    @DisplayName("HU44-04: principal con nombre no numerico -> 401 Sesion invalida")
+    void hu44_04_nombreNoNumerico() {
+        Principal principalNoNumerico = () -> "usuario-invalido";
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> controller.getHorarioActual(principalNoNumerico));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+        assertEquals("Sesion invalida", ex.getReason());
+        verifyNoInteractions(horarioRecomendadoService);
+    }
+
+    private void verifyNoInteractions(HorarioRecomendadoService service) {
+        org.mockito.Mockito.verifyNoInteractions(service);
     }
 }

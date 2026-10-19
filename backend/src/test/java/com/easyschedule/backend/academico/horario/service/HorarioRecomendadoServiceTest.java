@@ -375,4 +375,88 @@ class HorarioRecomendadoServiceTest {
         assertEquals("10:00", segunda.horaInicio());
         assertEquals("12:00", segunda.horaFin());
     }
+
+    // ==================================================================
+    // HU#44 — Consultar horario actual: caminos faltantes del servicio
+    // ==================================================================
+
+    @Test
+    @DisplayName("HU44-05: caso feliz completo -> universidad, carrera, malla, clases")
+    void hu44_05_casoFelizCompleto() {
+        Estudiante estudiante = estudianteBase();
+        when(estudianteRepository.findById(7L)).thenReturn(Optional.of(estudiante));
+        stubUniversidadCarrera();
+        when(ofertaMateriaRepository.findHorarioActualRows(7L, 10L, (short) 3))
+            .thenReturn(List.of(row("3", "Calculo", JSON_VALIDO)));
+
+        HorarioActualResponse horario = service.getHorarioActualByUserId(7L);
+
+        assertEquals("UTB", horario.universidad());
+        assertEquals("Sistemas", horario.carrera());
+        assertEquals("Ingenieria", horario.malla());
+        assertEquals("3", horario.semestreOferta());
+        assertEquals((short) 3, horario.semestreActual());
+        assertEquals(1, horario.clases().size());
+        assertEquals("Calculo", horario.clases().get(0).materia());
+        assertEquals("A", horario.clases().get(0).paralelo());
+        assertEquals("Lunes", horario.clases().get(0).dia());
+        assertEquals("08:00", horario.clases().get(0).horaInicio());
+        assertEquals("10:00", horario.clases().get(0).horaFin());
+        assertEquals("Docente", horario.clases().get(0).docente());
+        assertEquals("101", horario.clases().get(0).aula());
+        assertEquals(4, horario.clases().get(0).creditos());
+        assertEquals(100L, horario.clases().get(0).ofertaMateriaId());
+        assertTrue(horario.clases().get(0).esMateriaActual());
+
+        verify(estudianteRepository).findById(7L);
+        verify(universidadRepository).findByIdAndActiveTrue(5L);
+        verify(carreraRepository).findByIdAndActiveTrue(8L);
+        verify(ofertaMateriaRepository).findHorarioActualRows(7L, 10L, (short) 3);
+    }
+
+    @Test
+    @DisplayName("HU44-06: universidad asociada pero no encontrada -> universidad null")
+    void hu44_06_universidadNoEncontrada() {
+        Estudiante estudiante = estudianteBase();
+        when(estudianteRepository.findById(7L)).thenReturn(Optional.of(estudiante));
+        when(universidadRepository.findByIdAndActiveTrue(5L)).thenReturn(Optional.empty());
+        Carrera carrera = new Carrera();
+        carrera.setNombre("Sistemas");
+        when(carreraRepository.findByIdAndActiveTrue(8L)).thenReturn(Optional.of(carrera));
+        when(ofertaMateriaRepository.findHorarioActualRows(7L, 10L, (short) 3))
+            .thenReturn(List.of());
+
+        HorarioActualResponse horario = service.getHorarioActualByUserId(7L);
+
+        assertNull(horario.universidad());
+        assertEquals("Sistemas", horario.carrera());
+        assertEquals("Ingenieria", horario.malla());
+        assertNull(horario.semestreOferta());
+        assertEquals((short) 3, horario.semestreActual());
+        assertTrue(horario.clases().isEmpty());
+        assertFalse(service.hasHorarioActual(7L));
+    }
+
+    @Test
+    @DisplayName("HU44-07: carrera asociada pero no encontrada -> carrera null")
+    void hu44_07_carreraNoEncontrada() {
+        Estudiante estudiante = estudianteBase();
+        when(estudianteRepository.findById(7L)).thenReturn(Optional.of(estudiante));
+        Universidad universidad = new Universidad();
+        universidad.setNombre("UTB");
+        when(universidadRepository.findByIdAndActiveTrue(5L)).thenReturn(Optional.of(universidad));
+        when(carreraRepository.findByIdAndActiveTrue(8L)).thenReturn(Optional.empty());
+        when(ofertaMateriaRepository.findHorarioActualRows(7L, 10L, (short) 3))
+            .thenReturn(List.of());
+
+        HorarioActualResponse horario = service.getHorarioActualByUserId(7L);
+
+        assertEquals("UTB", horario.universidad());
+        assertNull(horario.carrera());
+        assertEquals("Ingenieria", horario.malla());
+        assertNull(horario.semestreOferta());
+        assertEquals((short) 3, horario.semestreActual());
+        assertTrue(horario.clases().isEmpty());
+        assertFalse(service.hasHorarioActual(7L));
+    }
 }
